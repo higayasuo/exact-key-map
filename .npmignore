@@ -1,0 +1,25 @@
+# Exclude everything except the dist and essential files, but .npmignore is a denylist
+# so we list what to exclude from the package.
+
+# Source and tests
+src/
+**/__tests__/
+**/*.spec.ts
+
+# Config and local files not needed in the package
+.vscode/
+.idea/
+.github/
+.DS_Store
+coverage/
+node_modules/
+vite.config.ts
+tsconfig.json
+*.log
+.env
+.env.*
+
+# Keep dist by not excluding it
+# Keep README.md, LICENSE, and package.json by default
+
+
