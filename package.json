@@ -4,6 +4,14 @@
   "description": "A tiny utility for creating exact key maps with strong TypeScript typings.",
   "license": "MIT",
   "type": "module",
+  "homepage": "https://github.com/higayasuo/exact-key-map#readme",
+  "bugs": {
+    "url": "https://github.com/higayasuo/exact-key-map/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/higayasuo/exact-key-map.git"
+  },
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
