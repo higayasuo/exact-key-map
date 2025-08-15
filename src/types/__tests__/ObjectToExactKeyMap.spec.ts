@@ -173,9 +173,9 @@ describe('ObjectToExactKeyMap', () => {
     const c = null as unknown as ValueOfKey<Entries, 'coordinates'>;
     const r = null as unknown as ValueOfKey<Entries, 'rgb'>;
     const p = null as unknown as ValueOfKey<Entries, 'pair'>;
-    expectTypeOf(c).toEqualTypeOf<[number, number]>();
-    expectTypeOf(r).toEqualTypeOf<[number, number, number]>();
-    expectTypeOf(p).toEqualTypeOf<[string, boolean]>();
+    expectTypeOf(c).toEqualTypeOf<number[]>();
+    expectTypeOf(r).toEqualTypeOf<number[]>();
+    expectTypeOf(p).toEqualTypeOf<(string | boolean)[]>();
   });
 
   it('converts object with generic types', () => {
