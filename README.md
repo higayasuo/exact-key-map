@@ -9,7 +9,7 @@ A strongly-typed `Map` extension for TypeScript that automatically infers litera
 - 🏗️ **Nested Support**: Nested entry arrays are automatically converted to nested `ExactKeyMap` instances
 - 📦 **Zero Dependencies**: Lightweight with no external dependencies
 - 🎯 **TypeScript First**: Built with TypeScript and provides excellent type inference
-- 🧪 **Fully Tested**: Comprehensive test suite with 52 tests
+- 🧪 **Fully Tested**: Comprehensive test suite with 82 tests
 
 ## Installation
 
@@ -23,7 +23,7 @@ npm install exact-key-map
 import { ExactKeyMap } from 'exact-key-map';
 
 // Create a map with exact key types
-const userMap = new ExactKeyMap([
+const userMap = ExactKeyMap.fromEntries([
   ['name', 'Alice'],
   ['age', 30],
   ['isActive', true],
@@ -49,7 +49,7 @@ userMap.delete('age'); // ✅ Valid, returns false (already deleted)
 ## Nested Maps
 
 ```typescript
-const config = new ExactKeyMap([
+const config = ExactKeyMap.fromEntries([
   [
     'database',
     [
@@ -75,10 +75,10 @@ const config = new ExactKeyMap([
 
 // Nested maps are automatically created
 const db = config.get('database');
-// Type: ExactKeyMap<readonly [['host', string], ['port', number], ['credentials', []...]]]> | undefined
+// Type: ExactKeyMap<[['host', string], ['port', number], ['credentials', ExactKeyMap<[]...]]>]> | undefined
 
 const credentials = db?.get('credentials');
-// Type: ExactKeyMap<readonly [['username', string], ['password', string]]> | undefined
+// Type: ExactKeyMap<[['username', string], ['password', string]]> | undefined
 
 const username = credentials?.get('username');
 // Type: string | undefined
@@ -90,16 +90,18 @@ const username = credentials?.get('username');
 
 A strongly-typed Map class that extends the native `Map` with exact key typing.
 
-#### Constructor
+#### Static factory methods
 
 ```typescript
-new ExactKeyMap(entries: Entries)
-new ExactKeyMap(...entries: Entries)
+ExactKeyMap.fromEntries(entries);
+ExactKeyMap.fromEntries(...entries);
+ExactKeyMap.fromObject(obj);
 ```
 
-**Parameters:**
+- `fromEntries` creates a map from entry tuples; nested entry arrays become nested `ExactKeyMap`s.
+- `fromObject` converts a plain object into an `ExactKeyMap` (nested plain objects become nested `ExactKeyMap`s).
 
-- `entries`: A readonly array of `[Key, Value]` pairs
+Note: The constructor is `protected`. Prefer the static factories above.
 
 #### Methods
 
@@ -108,7 +110,7 @@ new ExactKeyMap(...entries: Entries)
 Retrieves a value by key with exact type inference.
 
 ```typescript
-const map = new ExactKeyMap([
+const map = ExactKeyMap.fromEntries([
   ['name', 'Alice'],
   [1, true],
 ]);
@@ -121,7 +123,7 @@ const value = map.get(1); // boolean | undefined
 Sets a value with type safety.
 
 ```typescript
-const map = new ExactKeyMap([
+const map = ExactKeyMap.fromEntries([
   ['name', 'Alice'],
   [1, true],
 ]);
@@ -135,7 +137,7 @@ map.set(1, false); // ✅ Valid
 Removes a key-value pair with type safety.
 
 ```typescript
-const map = new ExactKeyMap([
+const map = ExactKeyMap.fromEntries([
   ['name', 'Alice'],
   [1, true],
 ]);
@@ -185,6 +187,113 @@ type NumberType = Widen<42>; // number
 type BooleanType = Widen<true>; // boolean
 ```
 
+Additional details:
+
+- Primitive literals are widened to their base primitives (string, number, boolean, bigint, symbol)
+- Template literal types are widened to string
+- Arrays and tuples are widened to homogeneous arrays of the widened element union
+  - Example: `[1, 2]` → `number[]`, `[1, 'a', true]` → `(number | string | boolean)[]`
+  - Readonly tuples/arrays also become arrays of the widened union
+- Non-primitive objects (e.g., `Date`, functions, plain objects) are preserved as-is
+- Typed arrays: `Uint8Array<ArrayBufferLike>` is normalized to `Uint8Array`
+
+```typescript
+// Arrays / tuples
+type A = Widen<[1, 2]>; // number[]
+type B = Widen<[1, 'a', true]>; // (number | string | boolean)[]
+type C = Widen<readonly ['x', 1]>; // (string | number)[]
+
+// Typed arrays
+type D = Widen<Uint8Array<ArrayBufferLike>>; // Uint8Array
+
+// Non-primitive objects are preserved
+type E = Widen<Date>; // Date
+type F = Widen<{ a: 1 }>; // { a: 1 }
+```
+
+#### `ExtractExactKeyMapGenerics<T>`
+
+Extracts the generic entries parameter from an `ExactKeyMap`.
+
+```typescript
+import type { ExtractExactKeyMapGenerics } from 'exact-key-map';
+
+type M = ExactKeyMap<
+  [
+    ['id', number],
+    ['profile', ExactKeyMap<[['name', string], ['age', number]]>],
+  ]
+>;
+// M => ExactKeyMap<[
+//   ['id', number],
+//   ['profile', ExactKeyMap<[
+//     ['name', string],
+//     ['age', number],
+//   ]>],
+// ]>
+
+type Entries = ExtractExactKeyMapGenerics<M>;
+// Entries => [
+//   ['id', number],
+//   ['profile', ExactKeyMap<[
+//     ['name', string],
+//     ['age', number],
+//   ]>],
+// ]
+```
+
+#### `TransformNestedEntries<E>`
+
+Transforms nested entry arrays by converting inner arrays into `ExactKeyMap`s and widening literal values.
+
+- Nested entry arrays → `ExactKeyMap<...>`
+- Literal values → widened primitives via `Widen`
+
+```typescript
+import type { TransformNestedEntries } from 'exact-key-map';
+
+type E = [['name', 'Alice'], ['details', [['age', 30], ['isActive', true]]]];
+
+type T = TransformNestedEntries<E>;
+// T => [
+//   ['name', string],
+//   ['details', ExactKeyMap<[
+//     ['age', number],
+//     ['isActive', boolean],
+//   ]>],
+// ]
+```
+
+#### `ObjectToExactKeyMap<T>`
+
+Converts a plain object type to a readonly tuple of readonly `[Key, Value]` entries.
+
+- Drops index signatures; keeps only known literal keys
+- Recursively converts nested plain objects to `ExactKeyMap<...>` of their own entries
+
+```typescript
+import type { ObjectToExactKeyMap } from 'exact-key-map';
+
+type User = {
+  id: number;
+  name: string;
+  meta: {
+    active: boolean;
+    tags: string[];
+  };
+};
+
+type Entries = ObjectToExactKeyMap<User>;
+// Entries => readonly [
+//   ['id', number],
+//   ['name', string],
+//   ['meta', ExactKeyMap<readonly [
+//     ['active', boolean],
+//     ['tags', string[]],
+//   ]>],
+// ]
+```
+
 ### Utility Functions
 
 #### `isArrayOfTuples(value: unknown): value is Array<[PropertyKey, unknown]>`
@@ -216,72 +325,6 @@ Checks if a value is a tuple with exactly 2 elements.
 isTuple([1, 2]); // true
 isTuple([1, 2, 3]); // false
 isTuple('string'); // false
-```
-
-## Use Cases
-
-### Configuration Objects
-
-```typescript
-const appConfig = new ExactKeyMap([
-  [
-    'server',
-    [
-      ['host', 'localhost'],
-      ['port', 3000],
-      ['ssl', true],
-    ],
-  ],
-  [
-    'database',
-    [
-      ['url', 'postgresql://localhost:5432/mydb'],
-      ['poolSize', 10],
-    ],
-  ],
-  [
-    'features',
-    [
-      ['debug', false],
-      ['cache', true],
-    ],
-  ],
-]);
-```
-
-### API Response Mapping
-
-```typescript
-const userResponse = new ExactKeyMap([
-  ['id', 123],
-  ['name', 'John Doe'],
-  ['email', 'john@example.com'],
-  [
-    'profile',
-    [
-      ['avatar', 'https://example.com/avatar.jpg'],
-      ['bio', 'Software Developer'],
-    ],
-  ],
-]);
-```
-
-### Form Data
-
-```typescript
-const formData = new ExactKeyMap([
-  ['firstName', 'Jane'],
-  ['lastName', 'Smith'],
-  ['age', 25],
-  ['interests', ['coding', 'reading', 'hiking']],
-  [
-    'preferences',
-    [
-      ['theme', 'dark'],
-      ['notifications', true],
-    ],
-  ],
-]);
 ```
 
 ## Comparison with Native Map
