@@ -3,6 +3,11 @@ import { resolve } from 'path';
 
 export default defineConfig({
   root: resolve(__dirname),
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, 'src'),
+    },
+  },
   test: {
     include: ['src/**/__tests__/**/*.spec.ts'],
     coverage: {
