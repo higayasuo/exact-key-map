@@ -6,6 +6,7 @@
     "lib": ["ES2020", "DOM"],
     "moduleResolution": "Bundler",
     "strict": true,
+    "noImplicitAny": true,
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
@@ -18,5 +19,3 @@
   },
   "include": ["src"]
 }
-
-
