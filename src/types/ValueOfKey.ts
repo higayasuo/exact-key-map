@@ -1,4 +1,4 @@
-import type { ExactKeyMap } from '../ExactKeyMap';
+import type { ExactKeyMap } from '../exact-key-map/ExactKeyMap';
 import type { Widen } from './Widen';
 
 /**

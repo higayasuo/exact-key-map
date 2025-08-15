@@ -8,7 +8,8 @@
  * - unique symbol -> symbol
  * - template literal types -> string
  */
-export type Widen<T> = T extends string
+
+type WidenPrimitive<T> = T extends string
   ? string
   : T extends number
     ? number
@@ -21,3 +22,10 @@ export type Widen<T> = T extends string
           : T extends `${string}`
             ? string
             : T;
+
+type WidenArray<T> = T extends readonly (infer U)[] ? Widen<U>[] : T;
+
+type NormalizeTypedArrays<T> =
+  T extends Uint8Array<ArrayBufferLike> ? Uint8Array : T;
+
+export type Widen<T> = NormalizeTypedArrays<WidenPrimitive<WidenArray<T>>>;

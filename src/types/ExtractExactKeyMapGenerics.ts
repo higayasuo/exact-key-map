@@ -1,4 +1,4 @@
-import { ExactKeyMap } from '../ExactKeyMap';
+import { ExactKeyMap } from '../exact-key-map/ExactKeyMap';
 
 /**
  * Extracts the generic type parameter from an `ExactKeyMap`.

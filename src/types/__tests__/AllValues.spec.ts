@@ -1,6 +1,6 @@
 import { describe, it, expectTypeOf } from 'vitest';
 import type { AllValues } from '../AllValues';
-import type { ExactKeyMap } from '../../ExactKeyMap';
+import type { ExactKeyMap } from '../../exact-key-map/ExactKeyMap';
 
 describe('AllValues', () => {
   it('creates union of widened primitive values', () => {

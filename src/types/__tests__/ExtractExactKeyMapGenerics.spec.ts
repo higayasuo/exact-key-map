@@ -1,6 +1,6 @@
 import { describe, it, expectTypeOf } from 'vitest';
 import type { ExtractExactKeyMapGenerics } from '../ExtractExactKeyMapGenerics';
-import type { ExactKeyMap } from '../../ExactKeyMap';
+import type { ExactKeyMap } from '../../exact-key-map/ExactKeyMap';
 
 describe('ExtractExactKeyMapGenerics', () => {
   it('extracts entries from ExactKeyMap', () => {

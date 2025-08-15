@@ -1,12 +1,15 @@
-import type { KeysOfEntries } from './types/KeysOfEntries';
-import type { ValueOfKey } from './types/ValueOfKey';
-import type { AllValues } from './types/AllValues';
-import { isArrayOfTuples } from './utils/isArrayOfTuples';
+import type { KeysOfEntries } from '@/types/KeysOfEntries';
+import type { ValueOfKey } from '@/types/ValueOfKey';
+import type { AllValues } from '@/types/AllValues';
+import { isArrayOfTuples } from '@/utils/isArrayOfTuples';
+import { TransformNestedEntries } from '@/types/TransformNestedEntries';
+import { objectToExactKeyMap } from './objectToExactKeyMap';
+import { ObjectToExactKeyMap } from '@/types/ObjectToExactKeyMap';
 
 /**
  * A strongly-typed `Map` extension that provides exact key typing and automatic
  * nested map conversion. This class extends the native `Map` with enhanced
- * TypeScript support for literal key types and value type inference.
+ * TypeScript support for literal key types and value inference.
  *
  * **Key Features:**
  * - **Exact Key Types**: Keys retain their literal types (e.g., `'name'` stays `'name'`, not `string`)
@@ -76,14 +79,14 @@ export class ExactKeyMap<
    * );
    * ```
    */
-  constructor(entries: Entries);
+  protected constructor(entries: Entries);
   /**
    * Creates a new `ExactKeyMap` instance from variadic entry pairs.
    *
    * @param entries - Variadic `[Key, Value]` pairs as separate arguments
    */
-  constructor(...entries: Entries);
-  constructor(
+  protected constructor(...entries: Entries);
+  protected constructor(
     first: Entries | readonly [unknown, unknown],
     ...rest: readonly [unknown, unknown][]
   ) {
@@ -101,6 +104,39 @@ export class ExactKeyMap<
     ]);
 
     super(processed as Iterable<[KeysOfEntries<Entries>, AllValues<Entries>]>);
+  }
+
+  // Entries-based factory that preserves nested ExactKeyMap types for display
+  static fromEntries<const E extends readonly (readonly [unknown, unknown])[]>(
+    entries: E,
+  ): ExactKeyMap<TransformNestedEntries<E>>;
+  static fromEntries<const E extends readonly (readonly [unknown, unknown])[]>(
+    ...entries: E
+  ): ExactKeyMap<TransformNestedEntries<E>>;
+  static fromEntries<const E extends readonly (readonly [unknown, unknown])[]>(
+    first: E | readonly [unknown, unknown],
+    ...rest: readonly [unknown, unknown][]
+  ): ExactKeyMap<TransformNestedEntries<E>> {
+    // Delegate to constructor; overloads provide precise typing
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return new ExactKeyMap(first as any, ...rest) as any;
+  }
+
+  /**
+   * Converts a plain object into an `ExactKeyMap`.
+   *
+   * This static method takes an object and transforms it into an `ExactKeyMap`,
+   * where each key-value pair is converted to an entry in the map. If a value
+   * is a plain object, it is recursively converted into an `ExactKeyMap`.
+   *
+   * @typeParam T - The type of the object to convert.
+   * @param obj - The object to convert into an `ExactKeyMap`.
+   * @returns An `ExactKeyMap` representation of the object.
+   */
+  static fromObject<T extends Record<string, unknown>>(
+    obj: T,
+  ): ExactKeyMap<ObjectToExactKeyMap<T>> {
+    return objectToExactKeyMap(obj);
   }
 
   /**

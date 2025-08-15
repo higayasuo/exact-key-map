@@ -19,7 +19,9 @@ export const isObjectLike = (value: unknown): boolean => {
  * @param input - The value to check
  * @returns True if the value is a plain object, false otherwise
  */
-export const isPlainObject = <T = object>(input: unknown): input is T => {
+export const isPlainObject = <T = Record<string, unknown>>(
+  input: unknown,
+): input is T => {
   if (!isObjectLike(input)) {
     return false;
   }

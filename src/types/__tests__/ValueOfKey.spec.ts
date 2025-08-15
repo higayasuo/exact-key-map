@@ -1,6 +1,6 @@
 import { describe, it, expectTypeOf } from 'vitest';
 import type { ValueOfKey } from '../ValueOfKey';
-import type { ExactKeyMap } from '../../ExactKeyMap';
+import type { ExactKeyMap } from '../../exact-key-map/ExactKeyMap';
 
 describe('ValueOfKey', () => {
   it('extracts widened primitive values', () => {

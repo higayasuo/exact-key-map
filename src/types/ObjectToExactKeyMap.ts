@@ -1,15 +1,14 @@
-import type { ExactKeyMap } from '../ExactKeyMap';
+import type { ExactKeyMap } from '../exact-key-map/ExactKeyMap';
 
 /**
  * Converts a plain object type to the entry-pair format expected by ExactKeyMap.
- * The result is order-agnostic: a readonly array whose element type is the
- * union of readonly `[Key, Value]` pairs for all known (non-index) keys.
+ * The result is a readonly tuple of readonly `[Key, Value]` pairs.
  *
  * Nested plain objects are recursively converted to `ExactKeyMap` of their
  * own entry pairs.
  *
- * @typeParam T - The object type to convert
- * @returns A readonly array type of `[Key, Value]` pairs (order not guaranteed)
+ * Note: Tuple element order follows TypeScript's union-to-tuple mechanics and
+ * is not guaranteed to reflect source declaration order.
  */
 
 // Drop index signatures, keep only known literal keys
@@ -47,14 +46,42 @@ type IsPlainObject<T> = T extends object
 type ConvertValue<V> =
   IsPlainObject<V> extends true ? ExactKeyMap<ObjectToExactKeyMap<V>> : V;
 
-type EntryUnion<T> = [KnownKeys<T>] extends [never]
-  ? never
-  : KnownKeys<T> extends infer K
-    ? K extends keyof T
-      ? readonly [K, ConvertValue<T[K]>]
-      : never
+type AsReadonlyArray<T> = T extends readonly unknown[] ? T : readonly [];
+
+type BuildEntries<
+  TObject,
+  KeyTuple extends readonly unknown[],
+> = KeyTuple extends readonly [infer K, ...infer Rest]
+  ? K extends keyof TObject
+    ? readonly [
+        readonly [K, ConvertValue<TObject[K]>],
+        ...BuildEntries<TObject, AsReadonlyArray<Rest>>,
+      ]
+    : BuildEntries<TObject, AsReadonlyArray<Rest>>
+  : readonly [];
+
+// Union → Tuple helpers
+type UnionToIntersection<U> = (
+  U extends unknown ? (arg: U) => void : never
+) extends (arg: infer I) => void
+  ? I
+  : never;
+
+type LastInUnion<U> =
+  UnionToIntersection<U extends unknown ? (x: U) => void : never> extends (
+    x: infer L,
+  ) => void
+    ? L
     : never;
 
-export type ObjectToExactKeyMap<T> = [KnownKeys<T>] extends [never]
-  ? readonly []
-  : readonly EntryUnion<T>[];
+type UnionToTuple<U, R extends unknown[] = []> = [U] extends [never]
+  ? R
+  : UnionToTuple<Exclude<U, LastInUnion<U>>, [...R, LastInUnion<U>]>;
+
+// Build readonly tuple of readonly [K, V] entries
+export type ObjectToExactKeyMap<T> =
+  UnionToTuple<KnownKeys<T>> extends infer KS
+    ? KS extends readonly unknown[]
+      ? BuildEntries<T, KS>
+      : readonly []
+    : readonly [];
