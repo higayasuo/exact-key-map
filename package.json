@@ -12,6 +12,7 @@
     "type": "git",
     "url": "git+https://github.com/higayasuo/exact-key-map.git"
   },
+  "author": "Yasuo Higa <higayasuo@gmail.com>",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -27,7 +28,7 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "build": "npm run typecheck && vite build",
+    "build": "npm run typecheck && npm run lint && vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

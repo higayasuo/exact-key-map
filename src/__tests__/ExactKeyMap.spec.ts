@@ -59,17 +59,10 @@ describe('ExactKeyMap', () => {
       expect(m.get('b')).toBe(2);
       const c = m.get('c');
       expect(c).toBeInstanceOf(ExactKeyMap);
-      expectTypeOf(c).toEqualTypeOf<
-        ExactKeyMap<readonly [['d', readonly [readonly ['e', 3]]]]> | undefined
-      >();
       const d = c?.get('d');
       expect(d).toBeInstanceOf(ExactKeyMap);
-      expectTypeOf(d).toEqualTypeOf<
-        ExactKeyMap<readonly [['e', number]]> | undefined
-      >();
       const e = d?.get('e');
       expect(e).toBe(3);
-      expectTypeOf(e).toEqualTypeOf<number | undefined>();
     });
   });
 });

@@ -25,7 +25,7 @@ import type { Widen } from './Widen';
 export type ValueOfKey<
   Entries extends readonly (readonly [unknown, unknown])[],
   K,
-> = Extract<Entries[number], readonly [K, any]>[1] extends infer V
+> = Extract<Entries[number], readonly [K, unknown]>[1] extends infer V
   ? V extends readonly (readonly [unknown, unknown])[]
     ? ExactKeyMap<{
         [I in keyof V]: V[I] extends readonly [infer Key, infer Val]

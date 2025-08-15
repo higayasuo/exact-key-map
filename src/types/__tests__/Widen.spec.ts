@@ -1,7 +1,7 @@
 import { describe, it, expectTypeOf } from 'vitest';
 import type { Widen } from '../Widen';
 
-declare const UNIQUE: unique symbol;
+declare const _UNIQUE: unique symbol;
 
 describe('Widen', () => {
   it('widens string literal to string', () => {
@@ -29,7 +29,7 @@ describe('Widen', () => {
   });
 
   it('widens unique symbol to symbol', () => {
-    type Actual = Widen<typeof UNIQUE>;
+    type Actual = Widen<typeof _UNIQUE>;
     const value = null as unknown as Actual;
     expectTypeOf(value).toEqualTypeOf<symbol>();
   });

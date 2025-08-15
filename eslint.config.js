@@ -28,10 +28,12 @@ export default [
       ...typescript.configs.recommended.rules,
       ...prettierConfig.rules,
       '@typescript-eslint/explicit-function-return-type': 'warn',
-      '@typescript-eslint/no-unused-vars': 'error',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
       '@typescript-eslint/no-explicit-any': 'warn',
       'prettier/prettier': 'error',
     },
   },
 ];
-

@@ -19,4 +19,4 @@
  */
 export type KeysOfEntries<
   Entries extends readonly (readonly [unknown, unknown])[],
-> = Entries[number] extends readonly [infer K, any] ? K : never;
+> = Entries[number] extends readonly [infer K, unknown] ? K : never;

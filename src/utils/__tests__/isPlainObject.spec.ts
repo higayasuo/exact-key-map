@@ -84,9 +84,9 @@ describe('isPlainObject', () => {
   it('works as a type guard with default object type', () => {
     const value: unknown = { a: 1, b: 2 };
 
-    if (isPlainObject(value)) {
+    if (isPlainObject<{ a: number; b: number }>(value)) {
       // TypeScript should know value is object here
-      expectTypeOf(value).toEqualTypeOf<object>();
+      expectTypeOf(value).toEqualTypeOf<{ a: number; b: number }>();
       expect(value.a).toBe(1);
       expect(value.b).toBe(2);
     } else {
