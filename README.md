@@ -39,6 +39,11 @@ userMap.set('name', 'Bob'); // ✅ Valid
 userMap.set('age', 25); // ✅ Valid
 userMap.set('isActive', false); // ✅ Valid
 // userMap.set('invalid', 'value'); // ❌ TypeScript error
+
+// Delete keys with type safety
+userMap.delete('age'); // ✅ Valid, returns true
+userMap.delete('age'); // ✅ Valid, returns false (already deleted)
+// userMap.delete('invalid'); // ❌ TypeScript error
 ```
 
 ## Nested Maps
@@ -70,7 +75,7 @@ const config = new ExactKeyMap([
 
 // Nested maps are automatically created
 const db = config.get('database');
-// Type: ExactKeyMap<readonly [['host', string], ['port', number], ['credentials', ExactKeyMap<...>]]> | undefined
+// Type: ExactKeyMap<readonly [['host', string], ['port', number], ['credentials', []...]]]> | undefined
 
 const credentials = db?.get('credentials');
 // Type: ExactKeyMap<readonly [['username', string], ['password', string]]> | undefined
@@ -125,6 +130,21 @@ map.set(1, false); // ✅ Valid
 // map.set('name', 123); // ❌ TypeScript error
 ```
 
+##### `delete<K>(key: K): boolean`
+
+Removes a key-value pair with type safety.
+
+```typescript
+const map = new ExactKeyMap([
+  ['name', 'Alice'],
+  [1, true],
+]);
+map.delete('name'); // ✅ Valid, returns true
+map.delete(1); // ✅ Valid, returns true
+map.delete('name'); // ✅ Valid, returns false (already deleted)
+// map.delete('invalid'); // ❌ TypeScript error
+```
+
 ### Type Utilities
 
 #### `KeysOfEntries<Entries>`
@@ -141,7 +161,7 @@ type Keys = KeysOfEntries<Entries>; // 'id' | 'name'
 Resolves the value type associated with a specific key.
 
 ```typescript
-type Entries = readonly [['id', number], ['name', string]];
+type Entries = [['id', number], ['name', string]];
 type IdValue = ValueOfKey<Entries, 'id'>; // number
 type NameValue = ValueOfKey<Entries, 'name'>; // string
 ```
@@ -151,7 +171,7 @@ type NameValue = ValueOfKey<Entries, 'name'>; // string
 Creates a union of all value types from an entries array.
 
 ```typescript
-type Entries = readonly [['id', number], ['name', string], ['active', boolean]];
+type Entries = [['id', number], ['name', string], ['active', boolean]];
 type Values = AllValues<Entries>; // number | string | boolean
 ```
 

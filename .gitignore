@@ -27,4 +27,7 @@ pnpm-debug.log*
 # Vite
 .vite/
 
+# npm pack
+*.tgz
+
 

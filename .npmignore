@@ -19,6 +19,9 @@ tsconfig.json
 .env
 .env.*
 
+# npm pack
+*.tgz
+
 # Keep dist by not excluding it
 # Keep README.md, LICENSE, and package.json by default
 

@@ -4,19 +4,84 @@ import type { AllValues } from './types/AllValues';
 import { isArrayOfTuples } from './utils/isArrayOfTuples';
 
 /**
- * A strongly-typed `Map` whose keys and values are derived from a readonly
- * tuple/array of `[Key, Value]` pairs. Keys retain their literal types,
- * while value literal primitives are widened to their base primitives.
+ * A strongly-typed `Map` extension that provides exact key typing and automatic
+ * nested map conversion. This class extends the native `Map` with enhanced
+ * TypeScript support for literal key types and value type inference.
  *
- * - Nested entry arrays are automatically converted to nested `ExactKeyMap`s.
+ * **Key Features:**
+ * - **Exact Key Types**: Keys retain their literal types (e.g., `'name'` stays `'name'`, not `string`)
+ * - **Value Widening**: Literal values are automatically widened to their base types
+ * - **Nested Support**: Nested entry arrays are automatically converted to nested `ExactKeyMap` instances
+ * - **Type Safety**: Full type safety for get/set operations with exact key matching
+ *
+ * @typeParam Entries - A readonly array of readonly `[Key, Value]` pairs that define the map structure
+ *
+ * @example
+ * ```typescript
+ * // Basic usage with exact key types
+ * const userMap = new ExactKeyMap([
+ *   ['name', 'Alice'],
+ *   ['age', 30],
+ *   ['isActive', true],
+ * ]);
+ *
+ * userMap.get('name');     // string | undefined
+ * userMap.set('age', 25);  // ✅ Type-safe
+ * // userMap.set('invalid', 'value'); // ❌ TypeScript error
+ * ```
+ *
+ * @example
+ * ```typescript
+ * // Nested maps are automatically created
+ * const config = new ExactKeyMap([
+ *   ['database', [
+ *     ['host', 'localhost'],
+ *     ['port', 5432],
+ *   ]],
+ * ]);
+ *
+ * const db = config.get('database'); // ExactKeyMap instance
+ * const host = db?.get('host');      // string | undefined
+ * ```
  */
 export class ExactKeyMap<
   const Entries extends readonly (readonly [unknown, unknown])[],
 > extends Map<KeysOfEntries<Entries>, AllValues<Entries>> {
   /**
-   * Create an `ExactKeyMap` from entries or variadic entry pairs.
+   * Creates a new `ExactKeyMap` instance from a readonly array of entry pairs.
+   *
+   * The constructor accepts entries in two formats:
+   * 1. A single array of `[Key, Value]` pairs
+   * 2. Variadic `[Key, Value]` pairs as separate arguments
+   *
+   * **Nested Processing:**
+   * - If any value is an array of tuples (detected by `isArrayOfTuples`), it's automatically
+   *   converted to a nested `ExactKeyMap` instance
+   * - This allows for hierarchical data structures without manual conversion
+   *
+   * @param entries - A readonly array of `[Key, Value]` pairs defining the map structure
+   *
+   * @example
+   * ```typescript
+   * // Single array format
+   * const map1 = new ExactKeyMap([
+   *   ['name', 'Alice'],
+   *   ['age', 30],
+   * ]);
+   *
+   * // Variadic format
+   * const map2 = new ExactKeyMap(
+   *   ['name', 'Alice'],
+   *   ['age', 30],
+   * );
+   * ```
    */
   constructor(entries: Entries);
+  /**
+   * Creates a new `ExactKeyMap` instance from variadic entry pairs.
+   *
+   * @param entries - Variadic `[Key, Value]` pairs as separate arguments
+   */
   constructor(...entries: Entries);
   constructor(
     first: Entries | readonly [unknown, unknown],
@@ -38,7 +103,34 @@ export class ExactKeyMap<
     super(processed as Iterable<[KeysOfEntries<Entries>, AllValues<Entries>]>);
   }
 
-  /** Update with the original key type and the value type for that key. */
+  /**
+   * Sets a value for the specified key with full type safety.
+   *
+   * This method ensures that:
+   * - The key must be one of the keys defined in the original entries
+   * - The value must match the type expected for that specific key
+   * - TypeScript will provide compile-time errors for invalid key-value combinations
+   *
+   * @typeParam K - The specific key type from the entries (must be a valid key)
+   * @param key - The key to set (must be one of the keys from the original entries)
+   * @param value - The value to set (must match the type for the specified key)
+   * @returns The `ExactKeyMap` instance for method chaining
+   *
+   * @example
+   * ```typescript
+   * const map = new ExactKeyMap([
+   *   ['name', 'Alice'],
+   *   ['age', 30],
+   *   ['isActive', true],
+   * ]);
+   *
+   * map.set('name', 'Bob');     // ✅ Valid
+   * map.set('age', 25);         // ✅ Valid
+   * map.set('isActive', false); // ✅ Valid
+   * // map.set('name', 123);    // ❌ TypeScript error: type 'number' not assignable
+   * // map.set('invalid', 'x'); // ❌ TypeScript error: 'invalid' not in keys
+   * ```
+   */
   set<K extends KeysOfEntries<Entries>>(
     key: K,
     value: ValueOfKey<Entries, K>,
@@ -46,10 +138,63 @@ export class ExactKeyMap<
     return super.set(key, value);
   }
 
-  /** Get with the original key type, returning the correct value type. */
+  /**
+   * Retrieves a value by key with exact type inference.
+   *
+   * This method provides:
+   * - **Exact Type Inference**: Returns the exact type associated with the specified key
+   * - **Type Safety**: The key parameter is constrained to valid keys from the entries
+   * - **Undefined Handling**: Returns `undefined` if the key doesn't exist (following Map behavior)
+   *
+   * @typeParam K - The specific key type from the entries (must be a valid key)
+   * @param key - The key to retrieve (must be one of the keys from the original entries)
+   * @returns The value associated with the key, or `undefined` if not found
+   *
+   * @example
+   * ```typescript
+   * const map = new ExactKeyMap([
+   *   ['name', 'Alice'],
+   *   ['age', 30],
+   *   ['isActive', true],
+   * ]);
+   *
+   * const name = map.get('name');     // string | undefined
+   * const age = map.get('age');       // number | undefined
+   * const isActive = map.get('isActive'); // boolean | undefined
+   * const invalid = map.get('invalid');   // ❌ TypeScript error: 'invalid' not in keys
+   * ```
+   */
   get<K extends KeysOfEntries<Entries>>(
     key: K,
   ): ValueOfKey<Entries, K> | undefined {
     return super.get(key) as ValueOfKey<Entries, K> | undefined;
+  }
+
+  /**
+   * Removes the specified key and its associated value from the map.
+   *
+   * This method provides type safety by ensuring only valid keys from the original
+   * entries can be deleted. However, note that deletion changes the map structure,
+   * which may affect type safety in subsequent operations.
+   *
+   * @typeParam K - The specific key type from the entries (must be a valid key)
+   * @param key - The key to remove (must be one of the keys from the original entries)
+   * @returns `true` if the key existed and was removed, `false` if the key didn't exist
+   *
+   * @example
+   * ```typescript
+   * const map = new ExactKeyMap([
+   *   ['name', 'Alice'],
+   *   ['age', 30],
+   * ]);
+   *
+   * map.delete('name'); // ✅ Valid, returns true
+   * map.delete('age');  // ✅ Valid, returns true
+   * map.delete('name'); // ✅ Valid, returns false (already deleted)
+   * // map.delete('invalid'); // ❌ TypeScript error: 'invalid' not in keys
+   * ```
+   */
+  delete<K extends KeysOfEntries<Entries>>(key: K): boolean {
+    return super.delete(key);
   }
 }
