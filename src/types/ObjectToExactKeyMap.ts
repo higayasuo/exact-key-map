@@ -1,4 +1,5 @@
 import type { ExactKeyMap } from '../exact-key-map/ExactKeyMap';
+import { LastInUnion } from './LastInUnion';
 
 /**
  * Converts a plain object type to the entry-pair format expected by ExactKeyMap.
@@ -59,20 +60,6 @@ type BuildEntries<
       ]
     : BuildEntries<TObject, AsReadonlyArray<Rest>>
   : readonly [];
-
-// Union → Tuple helpers
-type UnionToIntersection<U> = (
-  U extends unknown ? (arg: U) => void : never
-) extends (arg: infer I) => void
-  ? I
-  : never;
-
-type LastInUnion<U> =
-  UnionToIntersection<U extends unknown ? (x: U) => void : never> extends (
-    x: infer L,
-  ) => void
-    ? L
-    : never;
 
 type UnionToTuple<U, R extends unknown[] = []> = [U] extends [never]
   ? R
