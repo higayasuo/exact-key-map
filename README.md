@@ -294,6 +294,40 @@ type Entries = ObjectToExactKeyMap<User>;
 // ]
 ```
 
+#### `UnionToIntersection<U>`
+
+Converts a union type to an intersection type.
+
+This utility type uses TypeScript's conditional types and inference to transform a union of types into an intersection of those same types. It works by leveraging the distributive property of conditional types and function parameter inference.
+
+```typescript
+import type { UnionToIntersection } from 'exact-key-map';
+
+// Object unions become intersections
+type Union = { a: string } | { b: number };
+type Intersection = UnionToIntersection<Union>;
+// Result: { a: string } & { b: number }
+
+// Multiple object types
+type ObjectUnion = { x: 1 } | { y: 2 } | { z: 3 };
+type ObjectIntersection = UnionToIntersection<ObjectUnion>;
+// Result: { x: 1 } & { y: 2 } & { z: 3 }
+
+// Mixed types (objects with primitives)
+type MixedUnion = { a: string } | string;
+type MixedIntersection = UnionToIntersection<MixedUnion>;
+// Result: { a: string } & string
+
+// Primitive unions result in never
+type StringOrNumber = string | number;
+type Never = UnionToIntersection<StringOrNumber>;
+// Result: never
+
+// Special cases
+type NeverType = UnionToIntersection<never>;
+// Result: unknown
+```
+
 ### Utility Functions
 
 #### `isArrayOfTuples(value: unknown): value is Array<[PropertyKey, unknown]>`
