@@ -3,8 +3,6 @@ import type { ValueOfKey } from '@/types/ValueOfKey';
 import type { AllValues } from '@/types/AllValues';
 import { isArrayOfTuples } from '@/utils/isArrayOfTuples';
 import { TransformNestedEntries } from '@/types/TransformNestedEntries';
-import { objectToExactKeyMap } from './objectToExactKeyMap';
-import { ObjectToExactKeyMap } from '@/types/ObjectToExactKeyMap';
 
 /**
  * A strongly-typed `Map` extension that provides exact key typing and automatic
@@ -22,7 +20,7 @@ import { ObjectToExactKeyMap } from '@/types/ObjectToExactKeyMap';
  * @example
  * ```typescript
  * // Basic usage with exact key types
- * const userMap = new ExactKeyMap([
+ * const userMap = ExactKeyMap.fromEntries([
  *   ['name', 'Alice'],
  *   ['age', 30],
  *   ['isActive', true],
@@ -30,13 +28,14 @@ import { ObjectToExactKeyMap } from '@/types/ObjectToExactKeyMap';
  *
  * userMap.get('name');     // string | undefined
  * userMap.set('age', 25);  // ✅ Type-safe
+ * userMap.delete('age');   // ✅ Type-safe, returns true
  * // userMap.set('invalid', 'value'); // ❌ TypeScript error
  * ```
  *
  * @example
  * ```typescript
  * // Nested maps are automatically created
- * const config = new ExactKeyMap([
+ * const config = ExactKeyMap.fromEntries([
  *   ['database', [
  *     ['host', 'localhost'],
  *     ['port', 5432],
@@ -51,7 +50,10 @@ export class ExactKeyMap<
   const Entries extends readonly (readonly [unknown, unknown])[],
 > extends Map<KeysOfEntries<Entries>, AllValues<Entries>> {
   /**
-   * Creates a new `ExactKeyMap` instance from a readonly array of entry pairs.
+   * Protected constructor for creating `ExactKeyMap` instances.
+   *
+   * This constructor is protected and should not be called directly.
+   * Use the static `fromEntries` method instead to create `ExactKeyMap` instances.
    *
    * The constructor accepts entries in two formats:
    * 1. A single array of `[Key, Value]` pairs
@@ -66,17 +68,11 @@ export class ExactKeyMap<
    *
    * @example
    * ```typescript
-   * // Single array format
-   * const map1 = new ExactKeyMap([
+   * // Use fromEntries instead of constructor
+   * const map = ExactKeyMap.fromEntries([
    *   ['name', 'Alice'],
    *   ['age', 30],
    * ]);
-   *
-   * // Variadic format
-   * const map2 = new ExactKeyMap(
-   *   ['name', 'Alice'],
-   *   ['age', 30],
-   * );
    * ```
    */
   protected constructor(entries: Entries);
@@ -123,23 +119,6 @@ export class ExactKeyMap<
   }
 
   /**
-   * Converts a plain object into an `ExactKeyMap`.
-   *
-   * This static method takes an object and transforms it into an `ExactKeyMap`,
-   * where each key-value pair is converted to an entry in the map. If a value
-   * is a plain object, it is recursively converted into an `ExactKeyMap`.
-   *
-   * @typeParam T - The type of the object to convert.
-   * @param obj - The object to convert into an `ExactKeyMap`.
-   * @returns An `ExactKeyMap` representation of the object.
-   */
-  static fromObject<T extends Record<string, unknown>>(
-    obj: T,
-  ): ExactKeyMap<ObjectToExactKeyMap<T>> {
-    return objectToExactKeyMap(obj);
-  }
-
-  /**
    * Sets a value for the specified key with full type safety.
    *
    * This method ensures that:
@@ -154,7 +133,7 @@ export class ExactKeyMap<
    *
    * @example
    * ```typescript
-   * const map = new ExactKeyMap([
+   * const map = ExactKeyMap.fromEntries([
    *   ['name', 'Alice'],
    *   ['age', 30],
    *   ['isActive', true],
@@ -188,7 +167,7 @@ export class ExactKeyMap<
    *
    * @example
    * ```typescript
-   * const map = new ExactKeyMap([
+   * const map = ExactKeyMap.fromEntries([
    *   ['name', 'Alice'],
    *   ['age', 30],
    *   ['isActive', true],
@@ -219,7 +198,7 @@ export class ExactKeyMap<
    *
    * @example
    * ```typescript
-   * const map = new ExactKeyMap([
+   * const map = ExactKeyMap.fromEntries([
    *   ['name', 'Alice'],
    *   ['age', 30],
    * ]);

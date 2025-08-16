@@ -117,36 +117,4 @@ describe('ExactKeyMap', () => {
       });
     });
   });
-  describe('fromObject', () => {
-    it('basic: converts plain object to ExactKeyMap with nested objects', () => {
-      const m = ExactKeyMap.fromObject({
-        id: 1,
-        nested: { name: 'x', count: 2 },
-      });
-
-      expect(m).toBeInstanceOf(ExactKeyMap);
-      expect(m.get('id')).toBe(1);
-
-      const nested = m.get('nested');
-      expect(nested).toBeInstanceOf(ExactKeyMap);
-      expect(nested?.get('name')).toBe('x');
-      expect(nested?.get('count')).toBe(2);
-
-      expectTypeOf(m.get('id')).toEqualTypeOf<number | undefined>();
-      expectTypeOf(nested?.get('name')).toEqualTypeOf<string | undefined>();
-      expectTypeOf(nested?.get('count')).toEqualTypeOf<number | undefined>();
-    });
-
-    it('handles typed arrays and normal arrays without misclassification', () => {
-      const buf = new Uint8Array([1, 2]);
-      const m = ExactKeyMap.fromObject({ buf, arr: [1, 2] });
-
-      expect(m.get('buf')).toEqual(buf);
-      expect(m.get('arr')).toEqual([1, 2]);
-
-      expectTypeOf(m.get('buf')).toEqualTypeOf<Uint8Array | undefined>();
-      expectTypeOf(m.get('arr')).toEqualTypeOf<number[] | undefined>();
-    });
-  });
-  // factory type-checks are covered inline with runtime nested case above
 });

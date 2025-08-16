@@ -95,11 +95,9 @@ A strongly-typed Map class that extends the native `Map` with exact key typing.
 ```typescript
 ExactKeyMap.fromEntries(entries);
 ExactKeyMap.fromEntries(...entries);
-ExactKeyMap.fromObject(obj);
 ```
 
 - `fromEntries` creates a map from entry tuples; nested entry arrays become nested `ExactKeyMap`s.
-- `fromObject` converts a plain object into an `ExactKeyMap` (nested plain objects become nested `ExactKeyMap`s).
 
 Note: The constructor is `protected`. Prefer the static factories above.
 
@@ -263,119 +261,6 @@ type T = TransformNestedEntries<E>;
 //   ]>],
 // ]
 ```
-
-#### `ObjectToExactKeyMap<T>`
-
-Converts a plain object type to a readonly tuple of readonly `[Key, Value]` entries.
-
-- Drops index signatures; keeps only known literal keys
-- Recursively converts nested plain objects to `ExactKeyMap<...>` of their own entries
-
-```typescript
-import type { ObjectToExactKeyMap } from 'exact-key-map';
-
-type User = {
-  id: number;
-  name: string;
-  meta: {
-    active: boolean;
-    tags: string[];
-  };
-};
-
-type Entries = ObjectToExactKeyMap<User>;
-// Entries => readonly [
-//   ['id', number],
-//   ['name', string],
-//   ['meta', ExactKeyMap<readonly [
-//     ['active', boolean],
-//     ['tags', string[]],
-//   ]>],
-// ]
-```
-
-#### `UnionToIntersection<U>`
-
-Converts a union type to an intersection type.
-
-This utility type uses TypeScript's conditional types and inference to transform a union of types into an intersection of those same types. It works by leveraging the distributive property of conditional types and function parameter inference.
-
-```typescript
-import type { UnionToIntersection } from 'exact-key-map';
-
-// Object unions become intersections
-type Union = { a: string } | { b: number };
-type Intersection = UnionToIntersection<Union>;
-// Result: { a: string } & { b: number }
-
-// Multiple object types
-type ObjectUnion = { x: 1 } | { y: 2 } | { z: 3 };
-type ObjectIntersection = UnionToIntersection<ObjectUnion>;
-// Result: { x: 1 } & { y: 2 } & { z: 3 }
-
-// Mixed types (objects with primitives)
-type MixedUnion = { a: string } | string;
-type MixedIntersection = UnionToIntersection<MixedUnion>;
-// Result: { a: string } & string
-
-// Primitive unions result in never
-type StringOrNumber = string | number;
-type Never = UnionToIntersection<StringOrNumber>;
-// Result: never
-
-// Special cases
-type NeverType = UnionToIntersection<never>;
-// Result: unknown
-```
-
-#### `LastInUnion<U>`
-
-Extracts the last type from a union.
-
-This utility leverages conditional type distribution and function parameter inference (via `UnionToIntersection`) to infer the last member of a union. It is intended for unions of object-literal types.
-
-```typescript
-import type { LastInUnion } from 'exact-key-map';
-
-// Object-literal unions
-type ObjectUnion = { a: string } | { b: number } | { c: boolean };
-type LastObject = LastInUnion<ObjectUnion>;
-// Result: { c: boolean }
-
-// Single-member union
-type Single = { only: true };
-type LastSingle = LastInUnion<Single>;
-// Result: { only: true }
-
-// With never
-type WithNever = { a: string } | never | { b: number };
-type LastWithNever = LastInUnion<WithNever>;
-// Result: { b: number }
-
-// Function unions
-type FnUnion =
-  | (() => void)
-  | ((x: string) => number)
-  | ((x: number) => boolean);
-type LastFn = LastInUnion<FnUnion>;
-// Result: (x: number) => boolean
-
-// Edge cases
-type NeverType = LastInUnion<never>; // never
-type UnknownType = LastInUnion<unknown>; // unknown
-type AnyType = LastInUnion<any>; // any
-```
-
-Limitations:
-
-- Out of scope: unions of standalone types (except functions) and unions of array types.
-  - Standalone types here include primitives, classes, and tuples
-    (e.g., `string | number | boolean`, `Date | Uint8Array`,
-    `[string, number] | [number, boolean]`).
-  - Array unions include cases like `string[] | number[]`, `Date[] | Uint8Array[]`.
-- These categories do not have stable internal ordering across TypeScript versions,
-  so the inferred "last" member can vary. Prefer object-literal (and function) unions when using
-  `LastInUnion`, or pin your TypeScript version if you need deterministic behavior.
 
 ### Utility Functions
 
