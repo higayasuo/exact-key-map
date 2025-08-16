@@ -328,6 +328,55 @@ type NeverType = UnionToIntersection<never>;
 // Result: unknown
 ```
 
+#### `LastInUnion<U>`
+
+Extracts the last type from a union.
+
+This utility leverages conditional type distribution and function parameter inference (via `UnionToIntersection`) to infer the last member of a union. It is intended for unions of object-literal types.
+
+```typescript
+import type { LastInUnion } from 'exact-key-map';
+
+// Object-literal unions
+type ObjectUnion = { a: string } | { b: number } | { c: boolean };
+type LastObject = LastInUnion<ObjectUnion>;
+// Result: { c: boolean }
+
+// Single-member union
+type Single = { only: true };
+type LastSingle = LastInUnion<Single>;
+// Result: { only: true }
+
+// With never
+type WithNever = { a: string } | never | { b: number };
+type LastWithNever = LastInUnion<WithNever>;
+// Result: { b: number }
+
+// Function unions
+type FnUnion =
+  | (() => void)
+  | ((x: string) => number)
+  | ((x: number) => boolean);
+type LastFn = LastInUnion<FnUnion>;
+// Result: (x: number) => boolean
+
+// Edge cases
+type NeverType = LastInUnion<never>; // never
+type UnknownType = LastInUnion<unknown>; // unknown
+type AnyType = LastInUnion<any>; // any
+```
+
+Limitations:
+
+- Out of scope: unions of standalone types (except functions) and unions of array types.
+  - Standalone types here include primitives, classes, and tuples
+    (e.g., `string | number | boolean`, `Date | Uint8Array`,
+    `[string, number] | [number, boolean]`).
+  - Array unions include cases like `string[] | number[]`, `Date[] | Uint8Array[]`.
+- These categories do not have stable internal ordering across TypeScript versions,
+  so the inferred "last" member can vary. Prefer object-literal (and function) unions when using
+  `LastInUnion`, or pin your TypeScript version if you need deterministic behavior.
+
 ### Utility Functions
 
 #### `isArrayOfTuples(value: unknown): value is Array<[PropertyKey, unknown]>`
