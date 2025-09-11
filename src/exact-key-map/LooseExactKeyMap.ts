@@ -39,7 +39,7 @@ export class LooseExactKeyMap<
   /**
    * Initializes an empty map with the target type.
    */
-  constructor() {
+  protected constructor() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     super([] as unknown as any);
   }

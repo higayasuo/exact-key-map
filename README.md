@@ -20,7 +20,7 @@ npm install exact-key-map
 ## Quick Start
 
 ```typescript
-import { ExactKeyMap } from 'exact-key-map';
+import { ExactKeyMap, LooseExactKeyMap, ConstExactKeyMap } from 'exact-key-map';
 
 // Create a map with exact key types
 const userMap = ExactKeyMap.fromEntries([
@@ -44,6 +44,66 @@ userMap.set('isActive', false); // ✅ Valid
 userMap.delete('age'); // ✅ Valid, returns true
 userMap.delete('age'); // ✅ Valid, returns false (already deleted)
 // userMap.delete('invalid'); // ❌ TypeScript error
+```
+
+## Map Variants
+
+### ExactKeyMap
+
+The standard map with strict type safety - only predefined keys can be used.
+
+### LooseExactKeyMap
+
+A more flexible variant that allows additional keys beyond the predefined ones:
+
+```typescript
+const looseMap = LooseExactKeyMap.fromEntries([
+  ['name', 'Alice'],
+  ['age', 30],
+]);
+
+// Predefined keys are type-safe
+looseMap.set('name', 'Bob'); // ✅ Valid
+looseMap.get('age'); // number | undefined
+
+// Additional keys are allowed
+looseMap.set('email', 'alice@example.com'); // ✅ Valid
+looseMap.get('email'); // unknown
+looseMap.delete('email'); // ✅ Valid
+```
+
+### ConstExactKeyMap
+
+A read-only variant that preserves literal types and prevents modifications:
+
+```typescript
+const constMap = ConstExactKeyMap.fromEntries([
+  ['name', 'Alice'], // Literal type 'Alice' is preserved
+  ['age', 30], // Literal type 30 is preserved
+]);
+
+// Reading is allowed with preserved literal types
+const name = constMap.get('name'); // 'Alice' | undefined (literal type preserved)
+
+// Modifications throw errors
+// constMap.set('name', 'Bob'); // ❌ Runtime error: read-only
+// constMap.delete('age');      // ❌ Runtime error: read-only
+```
+
+### ExactKeyMap.withTypes
+
+Create an empty map with predefined types for later population:
+
+```typescript
+const typedMap =
+  ExactKeyMap.withTypes<
+    [['name', string], ['age', number], ['isActive', boolean]]
+  >();
+
+// All operations are type-safe
+typedMap.set('name', 'Alice'); // ✅ Valid
+typedMap.set('age', 30); // ✅ Valid
+typedMap.get('isActive'); // boolean | undefined
 ```
 
 ## Nested Maps
@@ -95,9 +155,11 @@ A strongly-typed Map class that extends the native `Map` with exact key typing.
 ```typescript
 ExactKeyMap.fromEntries(entries);
 ExactKeyMap.fromEntries(...entries);
+ExactKeyMap.withTypes<Entries>();
 ```
 
 - `fromEntries` creates a map from entry tuples; nested entry arrays become nested `ExactKeyMap`s.
+- `withTypes` creates an empty map with predefined types for later population.
 
 Note: The constructor is `protected`. Prefer the static factories above.
 
@@ -143,6 +205,110 @@ map.delete('name'); // ✅ Valid, returns true
 map.delete(1); // ✅ Valid, returns true
 map.delete('name'); // ✅ Valid, returns false (already deleted)
 // map.delete('invalid'); // ❌ TypeScript error
+```
+
+### `LooseExactKeyMap<Entries>`
+
+A flexible variant of `ExactKeyMap` that allows additional keys beyond the predefined ones while maintaining type safety for known keys.
+
+#### Static factory methods
+
+```typescript
+LooseExactKeyMap.fromEntries(entries);
+LooseExactKeyMap.fromEntries(...entries);
+LooseExactKeyMap.withTypes<Entries>();
+```
+
+#### Methods
+
+##### `get<K>(key: K): ValueOfKey<Entries, K> | undefined | unknown`
+
+Retrieves a value by key. For predefined keys, returns the exact type. For additional keys, returns `unknown`.
+
+```typescript
+const map = LooseExactKeyMap.fromEntries([
+  ['name', 'Alice'],
+  ['age', 30],
+]);
+
+const name = map.get('name'); // string | undefined
+const age = map.get('age'); // number | undefined
+const email = map.get('email'); // unknown
+```
+
+##### `set<K>(key: K, value: ValueOfKey<Entries, K> | unknown): this`
+
+Sets a value with type safety for predefined keys, or any value for additional keys.
+
+```typescript
+const map = LooseExactKeyMap.fromEntries([
+  ['name', 'Alice'],
+  ['age', 30],
+]);
+
+map.set('name', 'Bob'); // ✅ Valid (predefined key)
+map.set('email', 'bob@example.com'); // ✅ Valid (additional key)
+```
+
+##### `delete<K>(key: K): boolean`
+
+Removes a key-value pair. Works for both predefined and additional keys.
+
+```typescript
+const map = LooseExactKeyMap.fromEntries([
+  ['name', 'Alice'],
+  ['age', 30],
+]);
+
+map.delete('name'); // ✅ Valid, returns true
+map.delete('email'); // ✅ Valid, returns false (if not set)
+```
+
+### `ConstExactKeyMap<Entries>`
+
+A read-only variant of `ExactKeyMap` that preserves literal types and prevents modifications after construction.
+
+#### Static factory methods
+
+```typescript
+ConstExactKeyMap.fromEntries(entries);
+ConstExactKeyMap.fromEntries(...entries);
+```
+
+#### Methods
+
+##### `get<K>(key: K): ValueOfKey<Entries, K> | undefined`
+
+Retrieves a value by key with preserved literal types.
+
+```typescript
+const map = ConstExactKeyMap.fromEntries([
+  ['name', 'Alice'], // Literal type 'Alice' preserved
+  ['age', 30], // Literal type 30 preserved
+]);
+
+const name = map.get('name'); // 'Alice' | undefined (literal type preserved)
+const age = map.get('age'); // 30 | undefined (literal type preserved)
+```
+
+##### `set<K>(key: K, value: ValueOfKey<Entries, K>): this`
+
+**Throws an error** - ConstExactKeyMap is read-only.
+
+```typescript
+const map = ConstExactKeyMap.fromEntries([['name', 'Alice']]);
+
+// map.set('name', 'Bob'); // ❌ Runtime error: read-only
+```
+
+##### `delete<K>(key: K): boolean`
+
+**Throws an error** - ConstExactKeyMap is read-only.
+
+```typescript
+const map = ConstExactKeyMap.fromEntries([['name', 'Alice']]);
+
+// map.delete('name'); // ❌ Runtime error: read-only
 ```
 
 ### Type Utilities
@@ -262,6 +428,33 @@ type T = TransformNestedEntries<E>;
 // ]
 ```
 
+#### `TransformNestedConstEntries<E>`
+
+Transforms nested entry arrays by converting inner arrays into `ExactKeyMap`s while preserving literal value types.
+
+- Nested entry arrays → `ExactKeyMap<...>`
+- Literal values → preserved as-is (not widened)
+
+```typescript
+import type { TransformNestedConstEntries } from 'exact-key-map';
+
+type E = [['name', 'Alice'], ['details', [['age', 30], ['isActive', true]]]];
+
+type T = TransformNestedConstEntries<E>;
+// T => [
+//   ['name', 'Alice'],  // literal preserved, not widened to string
+//   ['details', ExactKeyMap<[
+//     ['age', 30],       // literal preserved, not widened to number
+//     ['isActive', true] // literal preserved, not widened to boolean
+//   ]>],
+// ]
+```
+
+**Key Differences:**
+
+- `TransformNestedEntries`: Widens literal values (`'Alice'` → `string`)
+- `TransformNestedConstEntries`: Preserves literal values (`'Alice'` stays `'Alice'`)
+
 ### Utility Functions
 
 #### `isArrayOfTuples(value: unknown): value is Array<[PropertyKey, unknown]>`
@@ -297,13 +490,14 @@ isTuple('string'); // false
 
 ## Comparison with Native Map
 
-| Feature        | Native Map                   | ExactKeyMap           |
-| -------------- | ---------------------------- | --------------------- |
-| Key Types      | `string \| number \| symbol` | Exact literal types   |
-| Value Types    | `any`                        | Inferred from entries |
-| Type Safety    | Limited                      | Full type safety      |
-| Nested Support | Manual                       | Automatic             |
-| IDE Support    | Basic                        | Excellent             |
+| Feature        | Native Map                   | ExactKeyMap           | LooseExactKeyMap    | ConstExactKeyMap      |
+| -------------- | ---------------------------- | --------------------- | ------------------- | --------------------- |
+| Key Types      | `string \| number \| symbol` | Exact literal types   | Exact + additional  | Exact literal types   |
+| Value Types    | `any`                        | Inferred from entries | Inferred + unknown  | Preserved literals    |
+| Type Safety    | Limited                      | Full type safety      | Partial type safety | Read-only type safety |
+| Nested Support | Manual                       | Automatic             | Automatic           | Automatic             |
+| IDE Support    | Basic                        | Excellent             | Good                | Excellent             |
+| Mutability     | Mutable                      | Mutable               | Mutable             | Immutable             |
 
 ## Requirements
 

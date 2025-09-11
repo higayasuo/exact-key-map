@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2025-09-12
+
+### Added
+
+- `ExactKeyMap.withTypes<Entries>()` static method - Creates empty maps with predefined types for later population
+- `LooseExactKeyMap` class - Flexible variant that allows additional keys beyond predefined ones while maintaining type safety for known keys
+- `ConstExactKeyMap` class - Read-only variant that preserves literal types and prevents modifications after construction
+- `TransformNestedConstEntries<E>` type utility - Transforms nested entry arrays while preserving literal value types (unlike `TransformNestedEntries` which widens them)
+- Additional utility functions:
+  - `isEntriesArray` - Checks if value is an array of entry tuples
+  - `toEntriesArray` - Converts variadic entries to a single array format
+
+### Enhanced
+
+- Updated README.md with comprehensive documentation for all new map variants and type utilities
+- Added comparison table showing differences between all map variants
+- Enhanced API reference with detailed examples for each new class and method
+
 ## [0.1.1] - 2025-08-16
 
 ### Removed
