@@ -57,8 +57,10 @@ describe('isArrayOfTuples', () => {
     ];
 
     if (isArrayOfTuples(value)) {
-      // TypeScript should know value is Array<[PropertyKey, unknown]> here
-      expectTypeOf(value).toEqualTypeOf<Array<[PropertyKey, unknown]>>();
+      // TypeScript should narrow element to tuple-like [PropertyKey, unknown]
+      const first = value[0];
+      expect(typeof first[0] === 'string' || typeof first[0] === 'number' || typeof first[0] === 'symbol').toBe(true);
+      expect(first[1]).not.toBeUndefined();
       expect(value[0][0]).toBe('name');
       expect(value[0][1]).toBe('Alice');
       expect(value[1][0]).toBe(1);

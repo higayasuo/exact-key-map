@@ -116,5 +116,45 @@ describe('ExactKeyMap', () => {
         expect(c?.get('d')).toBeUndefined();
       });
     });
+
+    describe('empty construction', () => {
+      it('valid: constructs a typed empty ExactKeyMap', () => {
+        const m = ExactKeyMap.fromEntries([] as const);
+
+        expect(m).toBeInstanceOf(ExactKeyMap);
+        expect(m.size).toBe(0);
+
+        // Type-level assertion: an empty entries array yields ExactKeyMap<readonly []>
+        expectTypeOf(m).toEqualTypeOf<ExactKeyMap<readonly []>>();
+      });
+
+      it('valid: constructs an empty ExactKeyMap from generics only', () => {
+        const m =
+          ExactKeyMap.withTypes<
+            [['name', string], [1, boolean], ['nested', [['x', number]]]]
+          >();
+
+        expect(m).toBeInstanceOf(ExactKeyMap);
+        expect(m.size).toBe(0);
+
+        // Keys and values should be enforced by the generic
+        expectTypeOf(m.get('name')).toEqualTypeOf<string | undefined>();
+        expectTypeOf(m.get(1)).toEqualTypeOf<boolean | undefined>();
+        const nested = m.get('nested');
+        expectTypeOf(nested).toEqualTypeOf<
+          ExactKeyMap<[readonly ['x', number]]> | undefined
+        >();
+
+        m.set('name', 'Alice');
+        m.set(1, true);
+        expect(m.get('name')).toBe('Alice');
+        expect(m.get(1)).toBe(true);
+
+        const n = ExactKeyMap.withTypes<[['x', number]]>();
+        n.set('x', 1);
+        m.set('nested', n);
+        expect(m.get('nested')).toBeInstanceOf(ExactKeyMap);
+      });
+    });
   });
 });

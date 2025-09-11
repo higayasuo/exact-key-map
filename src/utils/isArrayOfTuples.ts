@@ -1,4 +1,6 @@
-import { isTuple } from './isTuple';
+import { isTuple, Tuple } from './isTuple';
+
+export type ArrayOfTuples = Array<Tuple>;
 
 /**
  * Determines if the provided value is an array of entry tuples.
@@ -19,8 +21,6 @@ import { isTuple } from './isTuple';
  * isArrayOfTuples([{ key: 'value' }]); // false
  * ```
  */
-export const isArrayOfTuples = (
-  value: unknown,
-): value is Array<[PropertyKey, unknown]> => {
+export const isArrayOfTuples = (value: unknown): value is ArrayOfTuples => {
   return Array.isArray(value) && value.every(isTuple);
 };

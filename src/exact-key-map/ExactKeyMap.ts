@@ -3,6 +3,10 @@ import type { ValueOfKey } from '@/types/ValueOfKey';
 import type { AllValues } from '@/types/AllValues';
 import { isArrayOfTuples } from '@/utils/isArrayOfTuples';
 import { TransformNestedEntries } from '@/types/TransformNestedEntries';
+// import type { TransformNestedConstEntries } from '@/types/TransformNestedConstEntries';
+// import { isEntriesArray } from '@/utils/isEntriesArray';
+import { toEntriesArray } from '@/utils/toEntriesArray';
+// import type { LooseExactKeyMap } from './LooseExactKeyMap';
 
 /**
  * A strongly-typed `Map` extension that provides exact key typing and automatic
@@ -86,11 +90,7 @@ export class ExactKeyMap<
     first: Entries | readonly [unknown, unknown],
     ...rest: readonly [unknown, unknown][]
   ) {
-    const arr: readonly (readonly [unknown, unknown])[] = Array.isArray(
-      first[0],
-    )
-      ? (first as Entries)
-      : [first as [unknown, unknown], ...rest];
+    const arr = toEntriesArray(first, ...rest);
 
     const processed = arr.map(([key, value]) => [
       key,
@@ -117,6 +117,36 @@ export class ExactKeyMap<
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return new ExactKeyMap(first as any, ...rest) as any;
   }
+
+  // fromConstEntries removed; use ConstExactKeyMap.fromEntries instead
+
+  /**
+   * Creates an empty `ExactKeyMap` typed purely from generics, without providing any values.
+   *
+   * Use this when you want a strongly-typed map shape upfront and plan to populate it later.
+   * Nested entry arrays in the generic will be transformed to nested `ExactKeyMap` types.
+   *
+   * @typeParam E - A readonly array of `[Key, Value]` pairs defining the desired map shape
+   * @returns An empty `ExactKeyMap` with the specified type
+   *
+   * @example
+   * ```ts
+   * const m = ExactKeyMap.withTypes<[
+   *   ['name', string],
+   *   [1, boolean],
+   * ]>();
+   *
+   * m.set('name', 'Alice'); // type-safe
+   * m.get(1);               // boolean | undefined
+   * ```
+   */
+  static withTypes = <
+    const E extends readonly (readonly [unknown, unknown])[],
+  >(): ExactKeyMap<TransformNestedEntries<E>> => {
+    // Construct an empty ExactKeyMap with the target generic shape.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return new ExactKeyMap([] as unknown as E) as any;
+  };
 
   /**
    * Sets a value for the specified key with full type safety.

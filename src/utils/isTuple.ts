@@ -1,3 +1,5 @@
+export type Tuple = [unknown, unknown];
+
 /**
  * Check if a value is a tuple with exactly 2 elements.
  *
@@ -14,6 +16,6 @@
  *   isTuple([1, 2, 3]);         // false
  *   isTuple('not array');       // false
  */
-export const isTuple = (value: unknown): value is [unknown, unknown] => {
+export const isTuple = (value: unknown): value is Tuple => {
   return Array.isArray(value) && value.length === 2;
 };
