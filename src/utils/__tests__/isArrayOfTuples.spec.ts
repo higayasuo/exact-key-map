@@ -1,4 +1,4 @@
-import { describe, it, expect, expectTypeOf } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { isArrayOfTuples } from '../isArrayOfTuples';
 
 describe('isArrayOfTuples', () => {
@@ -59,7 +59,11 @@ describe('isArrayOfTuples', () => {
     if (isArrayOfTuples(value)) {
       // TypeScript should narrow element to tuple-like [PropertyKey, unknown]
       const first = value[0];
-      expect(typeof first[0] === 'string' || typeof first[0] === 'number' || typeof first[0] === 'symbol').toBe(true);
+      expect(
+        typeof first[0] === 'string' ||
+          typeof first[0] === 'number' ||
+          typeof first[0] === 'symbol',
+      ).toBe(true);
       expect(first[1]).not.toBeUndefined();
       expect(value[0][0]).toBe('name');
       expect(value[0][1]).toBe('Alice');
