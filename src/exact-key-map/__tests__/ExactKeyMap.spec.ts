@@ -1,5 +1,41 @@
 import { describe, it, expect, expectTypeOf } from 'vitest';
 import { ExactKeyMap } from '../ExactKeyMap';
+import type { TransformNestedEntries } from '../../types/TransformNestedEntries';
+
+enum Headers {
+  Algorithm = 1,
+  Critical = 2,
+  ContentType = 3,
+  KeyID = 4,
+  IV = 5,
+  PartialIV = 6,
+  CounterSignature = 7,
+  CounterSignature0 = 9,
+  CounterSignatureV2 = 11,
+  CounterSignature0V2 = 12,
+  X5Bag = 32,
+  X5Chain = 33,
+  X5T = 34,
+  X5U = 35,
+}
+
+type ProtectedHeadersEntries = [
+  [Headers.Algorithm, number],
+  [Headers.Critical, Headers[]],
+  [Headers.ContentType, number | Uint8Array],
+  [Headers.KeyID, Uint8Array],
+  [
+    Exclude<
+      Headers,
+      Headers.Algorithm | Headers.Critical | Headers.ContentType | Headers.KeyID
+    >,
+    Uint8Array | Uint8Array[] | number | number[],
+  ],
+];
+
+const createProtectedHeaders = (): ExactKeyMap<
+  TransformNestedEntries<ProtectedHeadersEntries>
+> => ExactKeyMap.withTypes<ProtectedHeadersEntries>();
 
 describe('ExactKeyMap', () => {
   describe('fromEntries', () => {
@@ -155,6 +191,32 @@ describe('ExactKeyMap', () => {
         m.set('nested', n);
         expect(m.get('nested')).toBeInstanceOf(ExactKeyMap);
       });
+    });
+
+    it('valid: protected headers accepts residual enum keys (Uint8Array values)', () => {
+      const headers = createProtectedHeaders();
+
+      headers.set(Headers.IV, new Uint8Array([0x10, 0x20, 0x30]));
+      headers.set(Headers.PartialIV, new Uint8Array([0x40, 0x50, 0x60]));
+      headers.set(Headers.X5Bag, new Uint8Array([0x70, 0x80, 0x90]));
+      headers.set(Headers.X5T, new Uint8Array([0xa0, 0xb0, 0xc0]));
+      headers.set(Headers.X5U, new Uint8Array([0xd0, 0xe0, 0xf0]));
+
+      expect(headers.get(Headers.IV)).toEqual(
+        new Uint8Array([0x10, 0x20, 0x30]),
+      );
+      expect(headers.get(Headers.PartialIV)).toEqual(
+        new Uint8Array([0x40, 0x50, 0x60]),
+      );
+      expect(headers.get(Headers.X5Bag)).toEqual(
+        new Uint8Array([0x70, 0x80, 0x90]),
+      );
+      expect(headers.get(Headers.X5T)).toEqual(
+        new Uint8Array([0xa0, 0xb0, 0xc0]),
+      );
+      expect(headers.get(Headers.X5U)).toEqual(
+        new Uint8Array([0xd0, 0xe0, 0xf0]),
+      );
     });
   });
 });

@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] - 2025-09-12
+
+### Added
+
+- Tests for COSE protected headers pattern (enum-based keys with Exclude catch-all)
+- Tests for NormalizeValue (primitives, flat entries, nested entries)
+- Tests for ExtractExactEntry utility
+
+### Changed
+
+- ValueOfKey: support catch-all enum keys when no exact entry exists
+- ExactKeyMap.spec.ts: inlined Headers enum and factory to remove external test deps
+
+### Fixed
+
+- NormalizeValue: avoid premature Widen inside recursion to preserve nested entry shapes
+
 ## [0.1.2] - 2025-09-12
 
 ### Added

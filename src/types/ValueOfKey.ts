@@ -1,5 +1,5 @@
-import type { ExactKeyMap } from '../exact-key-map/ExactKeyMap';
-import type { Widen } from './Widen';
+import { ExtractExactEntry } from './ExtractExactEntity';
+import { NormalizeValue } from './NormalizeValue';
 
 /**
  * Resolve the value type associated with a given key `K` from an `Entries`
@@ -25,12 +25,19 @@ import type { Widen } from './Widen';
 export type ValueOfKey<
   Entries extends readonly (readonly [unknown, unknown])[],
   K,
-> = Extract<Entries[number], readonly [K, unknown]>[1] extends infer V
-  ? V extends readonly (readonly [unknown, unknown])[]
-    ? ExactKeyMap<{
-        [I in keyof V]: V[I] extends readonly [infer Key, infer Val]
-          ? [Key, Widen<Val>]
-          : V[I];
-      }>
-    : Widen<V>
-  : never;
+> = // Try to find exact match entries first
+  ExtractExactEntry<Entries, K> extends infer Exact
+    ? [Exact] extends [never]
+      ? // No exact matches: allow catch-all entries where K is a subtype of the entry key
+        Entries[number] extends infer T
+        ? T extends readonly [infer Key, infer Val]
+          ? K extends Key
+            ? NormalizeValue<Val>
+            : never
+          : never
+        : never
+      : // Exact match found; transform its value shape
+        Exact extends readonly [K, infer V]
+        ? NormalizeValue<V>
+        : never
+    : never;

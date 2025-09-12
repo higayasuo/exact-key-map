@@ -43,4 +43,36 @@ describe('ValueOfKey', () => {
     const v = null as unknown as V;
     expectTypeOf(v).toEqualTypeOf<number>();
   });
+
+  it('supports catch-all enum keys via Exclude and prefers exact matches', () => {
+    enum H {
+      Algorithm = 1,
+      Critical = 2,
+      ContentType = 3,
+      KeyID = 4,
+      IV = 5,
+    }
+
+    type Entries = [
+      [H.Algorithm, 1 | 2],
+      [H.Critical, H[]],
+      [H.ContentType, number | Uint8Array],
+      [H.KeyID, Uint8Array],
+      [
+        Exclude<H, H.Algorithm | H.Critical | H.ContentType | H.KeyID>,
+        Uint8Array | Uint8Array[] | number | number[],
+      ],
+    ];
+
+    type VIV = ValueOfKey<Entries, H.IV>;
+    type VCT = ValueOfKey<Entries, H.ContentType>;
+
+    const viv = null as unknown as VIV;
+    const vct = null as unknown as VCT;
+
+    expectTypeOf(viv).toEqualTypeOf<
+      Uint8Array | Uint8Array[] | number | number[]
+    >();
+    expectTypeOf(vct).toEqualTypeOf<number | Uint8Array>();
+  });
 });
