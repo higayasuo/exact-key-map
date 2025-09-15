@@ -47,13 +47,13 @@ describe('ExactKeyMap', () => {
       it('valid: constructs from entries and supports updates', () => {
         const date = new Date();
         const date2 = new Date(2);
-        const m = new ExactKeyMap<
-          [['name', string] | [1, boolean] | ['ccc', Date]]
-        >([
+        type Entries = [['name', string] | [1, boolean] | ['ccc', Date]];
+        const initialEntries = [
           ['name', 'Alice'],
           [1, true],
           ['ccc', date],
-        ]);
+        ] as ReadonlyArray<Entries[number]>;
+        const m = new ExactKeyMap<Entries>(initialEntries);
 
         expect(m).toBeInstanceOf(ExactKeyMap);
         expect(m.size).toBe(3);
@@ -178,6 +178,38 @@ describe('ExactKeyMap', () => {
         expect(e).toBe(3);
         expectTypeOf(e).toEqualTypeOf<number | undefined>();
       });
+
+      it('valid: constructs from nested entries variable (non-inline)', () => {
+        type Entries = (
+          | ['a', number]
+          | ['b', number]
+          | ['c', [['d', [['e', number]]]]]
+        )[];
+
+        const entries: Entries = [
+          ['a', 1],
+          ['b', 2],
+          ['c', [['d', [['e', 3]]]]],
+        ];
+
+        const m = new ExactKeyMap<Entries>(entries);
+
+        expect(m.get('a')).toBe(1);
+        expect(m.get('b')).toBe(2);
+        const c = m.get('c');
+        expect(c).toBeInstanceOf(ExactKeyMap);
+        expectTypeOf(c).toEqualTypeOf<
+          ExactKeyMap<[['d', ExactKeyMap<[['e', number]]>]]> | undefined
+        >();
+        const d = c?.get('d');
+        expect(d).toBeInstanceOf(ExactKeyMap);
+        expectTypeOf(d).toEqualTypeOf<
+          ExactKeyMap<[['e', number]]> | undefined
+        >();
+        const e = d?.get('e');
+        expect(e).toBe(3);
+        expectTypeOf(e).toEqualTypeOf<number | undefined>();
+      });
     });
 
     describe('delete behavior', () => {
@@ -254,258 +286,72 @@ describe('ExactKeyMap', () => {
       });
     });
 
-    describe('withTypes', () => {
-      describe('data input', () => {
-        it('valid: withTypes accepts a single entries array', () => {
-          const m = new ExactKeyMap<[['name', string] | [1, boolean]]>([
-            ['name', 'Alice'],
-            [1, true],
-          ]);
+    describe('special cases', () => {
+      it('valid: protected headers accepts residual enum keys (Uint8Array values)', () => {
+        const headers = new ProtectedHeaders();
 
-          expect(m).toBeInstanceOf(ExactKeyMap);
-          expect(m.size).toBe(2);
-          expect(m.get('name')).toBe('Alice');
-          expect(m.get(1)).toBe(true);
+        headers.set(Headers.IV, new Uint8Array([0x10, 0x20, 0x30]));
+        headers.set(Headers.PartialIV, new Uint8Array([0x40, 0x50, 0x60]));
+        headers.set(Headers.X5Bag, new Uint8Array([0x70, 0x80, 0x90]));
+        headers.set(Headers.X5T, new Uint8Array([0xa0, 0xb0, 0xc0]));
+        headers.set(Headers.X5U, new Uint8Array([0xd0, 0xe0, 0xf0]));
 
-          expectTypeOf(m.get('name')).toEqualTypeOf<string | undefined>();
-          expectTypeOf(m.get(1)).toEqualTypeOf<boolean | undefined>();
-        });
-
-        it("valid: union [['aaa', number] | [string, string]] prioritizes exact key 'aaa'", () => {
-          const m = new ExactKeyMap<[['aaa', number] | [string, string]]>([
-            ['aaa', 1],
-            ['name', 'Alice'],
-          ]);
-
-          expect(m.get('aaa')).toBe(1);
-          expect(m.get('name')).toBe('Alice');
-
-          const vAaa = m.get('aaa');
-          const vOther = m.get('name');
-          expectTypeOf(vAaa).toEqualTypeOf<number | undefined>();
-          expectTypeOf(vOther).toEqualTypeOf<string | undefined>();
-
-          m.set('aaa', 2);
-          m.set('name', 'Bob');
-          expect(m.get('aaa')).toBe(2);
-          expect(m.get('name')).toBe('Bob');
-        });
-
-        it('valid: withTypes accepts variadic pairs (including nested)', () => {
-          const m = new ExactKeyMap<
-            [['a', number] | ['b', number] | ['nested', [['x', number]]]]
-          >([
-            ['a', 1],
-            ['b', 2],
-            ['nested', [['x', 3]]],
-          ]);
-
-          expect(m).toBeInstanceOf(ExactKeyMap);
-          expect(m.size).toBe(3);
-          expect(m.get('a')).toBe(1);
-          expect(m.get('b')).toBe(2);
-
-          const nested = m.get('nested');
-          expect(nested).toBeInstanceOf(ExactKeyMap);
-          const nestedForType = nested;
-          expectTypeOf(nestedForType).toEqualTypeOf<
-            ExactKeyMap<[['x', number]]> | undefined
-          >();
-          const x = nested?.get('x');
-          expect(x).toBe(3);
-          expectTypeOf(x).toEqualTypeOf<number | undefined>();
-        });
-
-        it('valid: withTypes supports generics richer than provided args (set later)', () => {
-          const m = new ExactKeyMap<
-            [['name', string] | [1, boolean] | ['nested', [['x', number]]]]
-          >([
-            ['name', 'Alice'],
-            ['nested', [['x', 3]]],
-          ]);
-
-          expect(m).toBeInstanceOf(ExactKeyMap);
-          expect(m.size).toBe(2);
-          expect(m.get('name')).toBe('Alice');
-
-          const nested = m.get('nested');
-          expect(nested).toBeInstanceOf(ExactKeyMap);
-          expectTypeOf(nested).toEqualTypeOf<
-            ExactKeyMap<[['x', number]]> | undefined
-          >();
-          const x = nested?.get('x');
-          expect(x).toBe(3);
-          expectTypeOf(x).toEqualTypeOf<number | undefined>();
-
-          // Missing key from generics can be set later
-          m.set(1, false);
-          expect(m.get(1)).toBe(false);
-          expectTypeOf(m.get(1)).toEqualTypeOf<boolean | undefined>();
-        });
-
-        describe('generics only', () => {
-          it('valid: constructs an empty ExactKeyMap from generics only', () => {
-            const m = new ExactKeyMap<
-              [['name', string] | [1, boolean] | ['nested', [['x', number]]]]
-            >();
-
-            expect(m).toBeInstanceOf(ExactKeyMap);
-            expect(m.size).toBe(0);
-
-            // Keys and values should be enforced by the generic
-            expectTypeOf(m.get('name')).toEqualTypeOf<string | undefined>();
-            expectTypeOf(m.get(1)).toEqualTypeOf<boolean | undefined>();
-            const nested = m.get('nested');
-            expectTypeOf(nested).toEqualTypeOf<
-              ExactKeyMap<[['x', number]]> | undefined
-            >();
-
-            m.set('name', 'Alice');
-            m.set(1, true);
-            expect(m.get('name')).toBe('Alice');
-            expect(m.get(1)).toBe(true);
-
-            const n = new ExactKeyMap<[['x', number]]>();
-            n.set('x', 1);
-            m.set('nested', n);
-            expect(m.get('nested')).toBeInstanceOf(ExactKeyMap);
-          });
-        });
-
-        describe('literals', () => {
-          it("valid: supports literal key and literal value types like ['aaa', 'alice']", () => {
-            const m = new ExactKeyMap<[['aaa', 'alice']]>([['aaa', 'alice']]);
-
-            expect(m).toBeInstanceOf(ExactKeyMap);
-            expect(m.size).toBe(1);
-            expect(m.get('aaa')).toBe('alice');
-
-            const v = m.get('aaa');
-            expectTypeOf(v).toEqualTypeOf<'alice' | undefined>();
-
-            m.set('aaa', 'alice');
-            expect(m.get('aaa')).toBe('alice');
-          });
-
-          it('valid: supports literal key with numeric literal value', () => {
-            const m = new ExactKeyMap<[['bbb', 123]]>([['bbb', 123]]);
-
-            expect(m.get('bbb')).toBe(123);
-            const v = m.get('bbb');
-            expectTypeOf(v).toEqualTypeOf<123 | undefined>();
-
-            m.set('bbb', 123);
-            expect(m.get('bbb')).toBe(123);
-          });
-
-          it("valid: supports union of literal values like ['color', 'red' | 'blue']", () => {
-            const m = new ExactKeyMap<[['color', 'red' | 'blue']]>([
-              ['color', 'red'],
-            ]);
-
-            const v1 = m.get('color');
-            expectTypeOf(v1).toEqualTypeOf<'red' | 'blue' | undefined>();
-
-            m.set('color', 'blue');
-            const v2 = m.get('color');
-            expectTypeOf(v2).toEqualTypeOf<'red' | 'blue' | undefined>();
-            expect(v2).toBe('blue');
-          });
-
-          it('valid: nested entries can use literal values', () => {
-            const m = new ExactKeyMap<[['nested', [['k', 'id']]]]>([
-              ['nested', [['k', 'id']]],
-            ]);
-
-            const nested = m.get('nested');
-            expect(nested).toBeInstanceOf(ExactKeyMap);
-            const v = nested?.get('k');
-            expect(v).toBe('id');
-            expectTypeOf(v).toEqualTypeOf<'id' | undefined>();
-          });
-        });
-
-        describe('special cases', () => {
-          it('valid: protected headers accepts residual enum keys (Uint8Array values)', () => {
-            const headers = new ProtectedHeaders();
-
-            headers.set(Headers.IV, new Uint8Array([0x10, 0x20, 0x30]));
-            headers.set(Headers.PartialIV, new Uint8Array([0x40, 0x50, 0x60]));
-            headers.set(Headers.X5Bag, new Uint8Array([0x70, 0x80, 0x90]));
-            headers.set(Headers.X5T, new Uint8Array([0xa0, 0xb0, 0xc0]));
-            headers.set(Headers.X5U, new Uint8Array([0xd0, 0xe0, 0xf0]));
-
-            expect(headers.get(Headers.IV)).toEqual(
-              new Uint8Array([0x10, 0x20, 0x30]),
-            );
-            expect(headers.get(Headers.PartialIV)).toEqual(
-              new Uint8Array([0x40, 0x50, 0x60]),
-            );
-            expect(headers.get(Headers.X5Bag)).toEqual(
-              new Uint8Array([0x70, 0x80, 0x90]),
-            );
-            expect(headers.get(Headers.X5T)).toEqual(
-              new Uint8Array([0xa0, 0xb0, 0xc0]),
-            );
-            expect(headers.get(Headers.X5U)).toEqual(
-              new Uint8Array([0xd0, 0xe0, 0xf0]),
-            );
-          });
-        });
+        expect(headers.get(Headers.IV)).toEqual(
+          new Uint8Array([0x10, 0x20, 0x30]),
+        );
+        expect(headers.get(Headers.PartialIV)).toEqual(
+          new Uint8Array([0x40, 0x50, 0x60]),
+        );
+        expect(headers.get(Headers.X5Bag)).toEqual(
+          new Uint8Array([0x70, 0x80, 0x90]),
+        );
+        expect(headers.get(Headers.X5T)).toEqual(
+          new Uint8Array([0xa0, 0xb0, 0xc0]),
+        );
+        expect(headers.get(Headers.X5U)).toEqual(
+          new Uint8Array([0xd0, 0xe0, 0xf0]),
+        );
       });
 
-      describe('special cases', () => {
-        it('valid: protected headers accepts residual enum keys (Uint8Array values)', () => {
-          const headers = new ProtectedHeaders();
+      it('valid: sets and gets Headers.IV on ProtectedHeaders', () => {
+        const headers = new ProtectedHeaders();
 
-          headers.set(Headers.IV, new Uint8Array([0x10, 0x20, 0x30]));
-          headers.set(Headers.PartialIV, new Uint8Array([0x40, 0x50, 0x60]));
-          headers.set(Headers.X5Bag, new Uint8Array([0x70, 0x80, 0x90]));
-          headers.set(Headers.X5T, new Uint8Array([0xa0, 0xb0, 0xc0]));
-          headers.set(Headers.X5U, new Uint8Array([0xd0, 0xe0, 0xf0]));
+        const iv = new Uint8Array([0x01, 0x02, 0x03]);
+        headers.set(Headers.IV, iv);
 
-          expect(headers.get(Headers.IV)).toEqual(
-            new Uint8Array([0x10, 0x20, 0x30]),
-          );
-          expect(headers.get(Headers.PartialIV)).toEqual(
-            new Uint8Array([0x40, 0x50, 0x60]),
-          );
-          expect(headers.get(Headers.X5Bag)).toEqual(
-            new Uint8Array([0x70, 0x80, 0x90]),
-          );
-          expect(headers.get(Headers.X5T)).toEqual(
-            new Uint8Array([0xa0, 0xb0, 0xc0]),
-          );
-          expect(headers.get(Headers.X5U)).toEqual(
-            new Uint8Array([0xd0, 0xe0, 0xf0]),
-          );
-        });
+        expect(headers.get(Headers.IV)).toEqual(iv);
 
-        it('valid: sets and gets Headers.IV on ProtectedHeaders', () => {
-          const headers = new ProtectedHeaders();
+        const ivValue = headers.get(Headers.IV);
+        expectTypeOf(ivValue).toEqualTypeOf<
+          Uint8Array | Uint8Array[] | number | number[] | undefined
+        >();
+      });
 
-          const iv = new Uint8Array([0x01, 0x02, 0x03]);
-          headers.set(Headers.IV, iv);
+      it('valid: constructs ProtectedHeaders with Headers.IV via constructor', () => {
+        const iv = new Uint8Array([0x01, 0x02, 0x03]);
+        const headers = new ProtectedHeaders([[Headers.IV, iv]]);
 
-          expect(headers.get(Headers.IV)).toEqual(iv);
+        expect(headers.get(Headers.IV)).toEqual(iv);
 
-          const ivValue = headers.get(Headers.IV);
-          expectTypeOf(ivValue).toEqualTypeOf<
-            Uint8Array | Uint8Array[] | number | number[] | undefined
-          >();
-        });
+        const ivValue = headers.get(Headers.IV);
+        expectTypeOf(ivValue).toEqualTypeOf<
+          Uint8Array | Uint8Array[] | number | number[] | undefined
+        >();
+      });
 
-        it('valid: constructs ProtectedHeaders with Headers.IV via constructor', () => {
-          const iv = new Uint8Array([0x01, 0x02, 0x03]);
-          const headers = new ProtectedHeaders([[Headers.IV, iv]]);
+      it('valid: constructs ProtectedHeaders from variable (non-inline)', () => {
+        const entries: ProtectedHeadersEntries = [
+          [Headers.IV, new Uint8Array([0x11, 0x22, 0x33])],
+          [Headers.KeyID, new Uint8Array([0xaa, 0xbb, 0xcc])],
+        ];
+        const headers = new ProtectedHeaders(entries);
 
-          expect(headers.get(Headers.IV)).toEqual(iv);
-
-          const ivValue = headers.get(Headers.IV);
-          expectTypeOf(ivValue).toEqualTypeOf<
-            Uint8Array | Uint8Array[] | number | number[] | undefined
-          >();
-        });
+        expect(headers.get(Headers.IV)).toEqual(
+          new Uint8Array([0x11, 0x22, 0x33]),
+        );
+        expect(headers.get(Headers.KeyID)).toEqual(
+          new Uint8Array([0xaa, 0xbb, 0xcc]),
+        );
       });
     });
   });

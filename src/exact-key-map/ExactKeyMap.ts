@@ -100,7 +100,9 @@ export class ExactKeyMap<
    * ]);
    * ```
    */
-  constructor(entries?: ReadonlyArray<Entries[number]>) {
+  constructor(entries?: ReadonlyArray<Entries[number]>);
+  constructor(entries?: Entries);
+  constructor(entries?: ReadonlyArray<Entries[number]> | Entries) {
     const normalized = (entries ?? []) as ReadonlyArray<Entries[number]>;
     const processed = normalized.map(
       ([key, value]: readonly [unknown, unknown]) => [
