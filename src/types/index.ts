@@ -3,7 +3,4 @@ export * from './ExtractExactEntity';
 export * from './ExtractExactKeyMapGenerics';
 export * from './KeysOfEntries';
 export * from './NormalizeValue';
-export * from './TransformNestedConstEntries';
-export * from './TransformNestedEntries';
 export * from './ValueOfKey';
-export * from './Widen';

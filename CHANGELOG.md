@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2025-09-15
+
+### Changed
+
+- Switched API to prefer constructor with union-of-tuples generics; `withTypes` removed
+- Introduced `ExactKeyMap.fromEntries([... ] as const)` for literal preservation use-cases
+- Updated JSDoc and README to union-style examples; removed references to other map variants
+
+### Removed
+
+- `withTypes` API and related README examples
+- Documentation for non-existent variants
+- `LooseExactKeyMap` class
+- `ConstExactKeyMap` class
+
+### Migration Notes (breaking)
+
+- Replace `ExactKeyMap.withTypes<...>()` with `new ExactKeyMap<...>(entries)`
+- For preserved literal values during construction, use `ExactKeyMap.fromEntries(entries as const)`
+- Update code using array-of-entries generics to union-of-tuples generics
+
 ## [0.1.4] - 2025-09-15
 
 ### Added

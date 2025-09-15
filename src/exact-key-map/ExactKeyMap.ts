@@ -2,177 +2,117 @@ import type { KeysOfEntries } from '@/types/KeysOfEntries';
 import type { ValueOfKey } from '@/types/ValueOfKey';
 import type { AllValues } from '@/types/AllValues';
 import { isArrayOfTuples } from '@/utils/isArrayOfTuples';
-import { TransformNestedEntries } from '@/types/TransformNestedEntries';
-// import type { TransformNestedConstEntries } from '@/types/TransformNestedConstEntries';
-// import { isEntriesArray } from '@/utils/isEntriesArray';
-import { toEntriesArray } from '@/utils/toEntriesArray';
-// import type { LooseExactKeyMap } from './LooseExactKeyMap';
 
 /**
- * A strongly-typed `Map` extension that provides exact key typing and automatic
- * nested map conversion. This class extends the native `Map` with enhanced
- * TypeScript support for literal key types and value inference.
+ * A type-safe Map implementation that enforces exact key-value type relationships
+ * based on a predefined entries structure.
  *
- * **Key Features:**
- * - **Exact Key Types**: Keys retain their literal types (e.g., `'name'` stays `'name'`, not `string`)
- * - **Value Widening**: Literal values are automatically widened to their base types
- * - **Nested Support**: Nested entry arrays are automatically converted to nested `ExactKeyMap` instances
- * - **Type Safety**: Full type safety for get/set operations with exact key matching
+ * This class extends the native `Map` to provide compile-time type safety by:
+ * - Constraining keys to only those defined in the original entries
+ * - Ensuring values match the exact types associated with their keys
+ * - Supporting nested structures by automatically converting nested entry arrays to `ExactKeyMap` instances
  *
- * @typeParam Entries - A readonly array of readonly `[Key, Value]` pairs that define the map structure
+ * Prefer using the constructor with union-of-tuples generics for most cases. Use
+ * `fromEntries([... ] as const)` only when you specifically want to preserve
+ * literal value types at construction time (note: preserved literals restrict
+ * later `set` calls to those literals).
+ *
+ * @typeParam Entries - A readonly array of key-value entry pairs that defines the allowed structure
  *
  * @example
  * ```typescript
- * // Basic usage with exact key types
- * const userMap = ExactKeyMap.fromEntries([
+ * // Constructor (recommended): union-style generics
+ * const map = new ExactKeyMap<[
+ *   ['name', string] | ['age', number] | ['isActive', boolean]
+ * ]>([
  *   ['name', 'Alice'],
  *   ['age', 30],
  *   ['isActive', true],
  * ]);
  *
- * userMap.get('name');     // string | undefined
- * userMap.set('age', 25);  // ✅ Type-safe
- * userMap.delete('age');   // ✅ Type-safe, returns true
- * // userMap.set('invalid', 'value'); // ❌ TypeScript error
+ * // Type-safe operations
+ * map.set('name', 'Bob');     // ✅ Valid
+ * map.set('age', 25);         // ✅ Valid
+ * // map.set('name', 123);    // ❌ TypeScript error
+ * // map.set('invalid', 'x'); // ❌ TypeScript error
  * ```
  *
  * @example
  * ```typescript
- * // Nested maps are automatically created
- * const config = ExactKeyMap.fromEntries([
- *   ['database', [
- *     ['host', 'localhost'],
- *     ['port', 5432],
- *   ]],
+ * // Nested structures are automatically converted to ExactKeyMap instances
+ * const nested = new ExactKeyMap<[
+ *   [
+ *     'user',
+ *     [
+ *       ['id', number] | ['name', string]
+ *     ]
+ *   ] | [
+ *     'settings',
+ *     [
+ *       ['theme', string] | ['notifications', boolean]
+ *     ]
+ *   ]
+ * ]>([
+ *   ['user', [['id', 1], ['name', 'Alice']]],
+ *   ['settings', [['theme', 'dark'], ['notifications', true]]],
  * ]);
- *
- * const db = config.get('database'); // ExactKeyMap instance
- * const host = db?.get('host');      // string | undefined
  * ```
  */
 export class ExactKeyMap<
-  const Entries extends readonly (readonly [unknown, unknown])[],
+  Entries extends readonly (readonly [unknown, unknown])[],
 > extends Map<KeysOfEntries<Entries>, AllValues<Entries>> {
   /**
-   * Protected constructor for creating `ExactKeyMap` instances.
+   * Creates a new `ExactKeyMap` while preserving literal types from the provided entries.
    *
-   * This constructor is protected and should not be called directly.
-   * Use the static `fromEntries` method instead to create `ExactKeyMap` instances.
+   * Prefer the constructor for most usage. This factory is useful when you want
+   * to preserve literal values at construction time without specifying generics.
+   * Note that preserving literals means subsequent `set` calls for those keys
+   * must use the same literal types. For mutable values, use the constructor
+   * with union-of-tuples generics instead.
+   */
+  static fromEntries = <
+    const E extends readonly (readonly [unknown, unknown])[],
+  >(
+    entries: E,
+  ): ExactKeyMap<E> => {
+    return new ExactKeyMap<E>(entries);
+  };
+
+  /**
+   * Creates a new ExactKeyMap instance from the provided entries.
    *
-   * The constructor accepts entries in two formats:
-   * 1. A single array of `[Key, Value]` pairs
-   * 2. Variadic `[Key, Value]` pairs as separate arguments
+   * The constructor processes the entries to:
+   * - Preserve primitive values as-is
+   * - Convert nested entry arrays into nested `ExactKeyMap` instances
+   * - Maintain type safety throughout the structure
    *
-   * **Nested Processing:**
-   * - If any value is an array of tuples (detected by `isArrayOfTuples`), it's automatically
-   *   converted to a nested `ExactKeyMap` instance
-   * - This allows for hierarchical data structures without manual conversion
-   *
-   * @param entries - A readonly array of `[Key, Value]` pairs defining the map structure
+   * @param entries - The entries array that defines the map's structure and initial values
    *
    * @example
    * ```typescript
-   * // Use fromEntries instead of constructor
-   * const map = ExactKeyMap.fromEntries([
-   *   ['name', 'Alice'],
-   *   ['age', 30],
+   * const map = new ExactKeyMap<[
+   *   ['id', number] | ['profile', [
+   *     ['name', string] | ['email', string]
+   *   ]]
+   * ]>([
+   *   ['id', 1],
+   *   ['profile', [['name', 'Alice'], ['email', 'alice@example.com']]],
    * ]);
    * ```
    */
-  protected constructor(entries: Entries);
-  /**
-   * Creates a new `ExactKeyMap` instance from variadic entry pairs.
-   *
-   * @param entries - Variadic `[Key, Value]` pairs as separate arguments
-   */
-  protected constructor(...entries: Entries);
-  protected constructor(
-    first: Entries | readonly [unknown, unknown],
-    ...rest: readonly [unknown, unknown][]
-  ) {
-    const arr = toEntriesArray(first, ...rest);
-
-    const processed = arr.map(([key, value]) => [
-      key,
-      isArrayOfTuples(value)
-        ? new ExactKeyMap(value as unknown as Entries)
-        : value,
-    ]);
+  constructor(entries?: ReadonlyArray<Entries[number]>) {
+    const normalized = (entries ?? []) as ReadonlyArray<Entries[number]>;
+    const processed = normalized.map(
+      ([key, value]: readonly [unknown, unknown]) => [
+        key,
+        isArrayOfTuples(value)
+          ? new ExactKeyMap(value as readonly (readonly [unknown, unknown])[])
+          : value,
+      ],
+    );
 
     super(processed as Iterable<[KeysOfEntries<Entries>, AllValues<Entries>]>);
   }
-
-  // Entries-based factory that preserves nested ExactKeyMap types for display
-  static fromEntries<const E extends readonly (readonly [unknown, unknown])[]>(
-    entries: E,
-  ): ExactKeyMap<TransformNestedEntries<E>>;
-  static fromEntries<const E extends readonly (readonly [unknown, unknown])[]>(
-    ...entries: E
-  ): ExactKeyMap<TransformNestedEntries<E>>;
-  static fromEntries<const E extends readonly (readonly [unknown, unknown])[]>(
-    first: E | readonly [unknown, unknown],
-    ...rest: readonly [unknown, unknown][]
-  ): ExactKeyMap<TransformNestedEntries<E>> {
-    // Delegate to constructor; overloads provide precise typing
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return new ExactKeyMap(first as any, ...rest) as any;
-  }
-
-  // fromConstEntries removed; use ConstExactKeyMap.fromEntries instead
-
-  /**
-   * Creates an empty `ExactKeyMap` typed purely from generics, without providing any values.
-   *
-   * Use this when you want a strongly-typed map shape upfront and plan to populate it later.
-   * Nested entry arrays in the generic will be transformed to nested `ExactKeyMap` types.
-   *
-   * @typeParam E - A readonly array of `[Key, Value]` pairs defining the desired map shape
-   * @returns An `ExactKeyMap` with the specified type. If no arguments are provided,
-   * returns an empty map. You may also pass either a single entries array or variadic
-   * entry pairs to initialize the map.
-   *
-   * @example
-   * ```ts
-   * const m = ExactKeyMap.withTypes<[
-   *   ['name', string],
-   *   [1, boolean],
-   * ]>();
-   *
-   * m.set('name', 'Alice'); // type-safe
-   * m.get(1);               // boolean | undefined
-   * ```
-   */
-  static withTypes: {
-    // Inference from a single entries array
-    <const E extends readonly (readonly [unknown, unknown])[]>(
-      entries: E,
-    ): ExactKeyMap<TransformNestedEntries<E>>;
-    // Inference from variadic entries
-    <const E extends readonly (readonly [unknown, unknown])[]>(
-      ...entries: E
-    ): ExactKeyMap<TransformNestedEntries<E>>;
-    // Explicit generic with no args
-    <const E extends readonly (readonly [unknown, unknown])[]>(): ExactKeyMap<
-      TransformNestedEntries<E>
-    >;
-    // Explicit generic with variadic unknown pairs (args may be subset of generic shape)
-    <const E extends readonly (readonly [unknown, unknown])[]>(
-      ...entries: readonly [unknown, unknown][]
-    ): ExactKeyMap<TransformNestedEntries<E>>;
-    // Explicit generic with single entries array (args may be subset of generic shape)
-    <const E extends readonly (readonly [unknown, unknown])[]>(
-      entries: ReadonlyArray<readonly [unknown, unknown]>,
-    ): ExactKeyMap<TransformNestedEntries<E>>;
-  } = <const E extends readonly (readonly [unknown, unknown])[]>(
-    first?: ReadonlyArray<readonly unknown[]> | readonly [unknown, unknown],
-    ...rest: readonly [unknown, unknown][]
-  ): ExactKeyMap<TransformNestedEntries<E>> => {
-    const arr = first === undefined ? [] : toEntriesArray(first, ...rest);
-
-    // Construct an ExactKeyMap with the target generic shape and initial data.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return new ExactKeyMap(arr as unknown as E) as any;
-  };
 
   /**
    * Sets a value for the specified key with full type safety.
@@ -189,7 +129,10 @@ export class ExactKeyMap<
    *
    * @example
    * ```typescript
-   * const map = ExactKeyMap.fromEntries([
+   * // Prefer constructor (union-of-tuples generics) for mutable values
+   * const map = new ExactKeyMap<[
+   *   ['name', string] | ['age', number] | ['isActive', boolean]
+   * ]>([
    *   ['name', 'Alice'],
    *   ['age', 30],
    *   ['isActive', true],
@@ -198,8 +141,11 @@ export class ExactKeyMap<
    * map.set('name', 'Bob');     // ✅ Valid
    * map.set('age', 25);         // ✅ Valid
    * map.set('isActive', false); // ✅ Valid
-   * // map.set('name', 123);    // ❌ TypeScript error: type 'number' not assignable
-   * // map.set('invalid', 'x'); // ❌ TypeScript error: 'invalid' not in keys
+   * // map.set('name', 123);    // ❌ TypeScript error
+   * // map.set('invalid', 'x'); // ❌ TypeScript error
+   *
+   * // Note: fromEntries([... ] as const) preserves literal values and will
+   * // restrict subsequent set calls to those literals. Use constructor for set examples.
    * ```
    */
   set<K extends KeysOfEntries<Entries>>(
@@ -223,16 +169,18 @@ export class ExactKeyMap<
    *
    * @example
    * ```typescript
-   * const map = ExactKeyMap.fromEntries([
+   * const map = new ExactKeyMap<[
+   *   ['name', string] | ['age', number] | ['isActive', boolean]
+   * ]>([
    *   ['name', 'Alice'],
    *   ['age', 30],
    *   ['isActive', true],
    * ]);
    *
-   * const name = map.get('name');     // string | undefined
-   * const age = map.get('age');       // number | undefined
-   * const isActive = map.get('isActive'); // boolean | undefined
-   * const invalid = map.get('invalid');   // ❌ TypeScript error: 'invalid' not in keys
+   * const name = map.get('name');          // string | undefined
+   * const age = map.get('age');            // number | undefined
+   * const isActive = map.get('isActive');  // boolean | undefined
+   * // const invalid = map.get('invalid'); // ❌ TypeScript error
    * ```
    */
   get<K extends KeysOfEntries<Entries>>(
@@ -254,7 +202,9 @@ export class ExactKeyMap<
    *
    * @example
    * ```typescript
-   * const map = ExactKeyMap.fromEntries([
+   * const map = new ExactKeyMap<[
+   *   ['name', string] | ['age', number]
+   * ]>([
    *   ['name', 'Alice'],
    *   ['age', 30],
    * ]);
@@ -262,7 +212,7 @@ export class ExactKeyMap<
    * map.delete('name'); // ✅ Valid, returns true
    * map.delete('age');  // ✅ Valid, returns true
    * map.delete('name'); // ✅ Valid, returns false (already deleted)
-   * // map.delete('invalid'); // ❌ TypeScript error: 'invalid' not in keys
+   * // map.delete('invalid'); // ❌ TypeScript error
    * ```
    */
   delete<K extends KeysOfEntries<Entries>>(key: K): boolean {

@@ -1,6 +1,5 @@
 import { describe, it, expect, expectTypeOf } from 'vitest';
 import { ExactKeyMap } from '../ExactKeyMap';
-import type { TransformNestedEntries } from '../../types/TransformNestedEntries';
 
 enum Headers {
   Algorithm = 1,
@@ -19,31 +18,35 @@ enum Headers {
   X5U = 35,
 }
 
-type ProtectedHeadersEntries = [
-  [Headers.Algorithm, number],
-  [Headers.Critical, Headers[]],
-  [Headers.ContentType, number | Uint8Array],
-  [Headers.KeyID, Uint8Array],
-  [
-    Exclude<
-      Headers,
-      Headers.Algorithm | Headers.Critical | Headers.ContentType | Headers.KeyID
-    >,
-    Uint8Array | Uint8Array[] | number | number[],
-  ],
-];
+type ProtectedHeadersEntries = (
+  | [Headers.Algorithm, number]
+  | [Headers.Critical, Headers[]]
+  | [Headers.ContentType, number | Uint8Array]
+  | [Headers.KeyID, Uint8Array]
+  | [
+      Exclude<
+        Headers,
+        | Headers.Algorithm
+        | Headers.Critical
+        | Headers.ContentType
+        | Headers.KeyID
+      >,
+      Uint8Array | Uint8Array[] | number | number[],
+    ]
+)[];
 
-const createProtectedHeaders = (): ExactKeyMap<
-  TransformNestedEntries<ProtectedHeadersEntries>
-> => ExactKeyMap.withTypes<ProtectedHeadersEntries>();
+const createProtectedHeaders = (): ExactKeyMap<ProtectedHeadersEntries> =>
+  new ExactKeyMap<ProtectedHeadersEntries>();
 
 describe('ExactKeyMap', () => {
-  describe('fromEntries', () => {
+  describe('constructor', () => {
     describe('basic construction and updates', () => {
       it('valid: constructs from entries and supports updates', () => {
         const date = new Date();
         const date2 = new Date(2);
-        const m = ExactKeyMap.fromEntries([
+        const m = new ExactKeyMap<
+          [['name', string] | [1, boolean] | ['ccc', Date]]
+        >([
           ['name', 'Alice'],
           [1, true],
           ['ccc', date],
@@ -70,13 +73,69 @@ describe('ExactKeyMap', () => {
         expectTypeOf(boolValue).toEqualTypeOf<boolean | undefined>();
         expectTypeOf(ccc).toEqualTypeOf<Date | undefined>();
       });
+
+      it('valid: constructs from sub entries array and supports updates', () => {
+        const date = new Date();
+        const date2 = new Date(2);
+        const m = new ExactKeyMap<
+          [['name', string] | [1, boolean] | ['ccc', Date]]
+        >([
+          ['name', 'Alice'],
+          ['ccc', date],
+        ]);
+
+        expect(m).toBeInstanceOf(ExactKeyMap);
+        expect(m.size).toBe(2);
+        expect(m.get('name')).toBe('Alice');
+        expect(m.get('ccc')).toEqual(date);
+
+        m.set('name', 'Bob');
+        expect(m.get('name')).toBe('Bob');
+        m.set(1, false);
+        expect(m.get(1)).toBe(false);
+        m.set('ccc', date2);
+        expect(m.get('ccc')).toEqual(date2);
+
+        // type-checks for the same data
+        const ccc = m.get('ccc');
+        const nameValue = m.get('name');
+        const boolValue = m.get(1);
+        expectTypeOf(nameValue).toEqualTypeOf<string | undefined>();
+        expectTypeOf(boolValue).toEqualTypeOf<boolean | undefined>();
+        expectTypeOf(ccc).toEqualTypeOf<Date | undefined>();
+      });
+    });
+
+    describe('constructor without generics', () => {
+      it('valid: infers types from entries without generics', () => {
+        const m = ExactKeyMap.fromEntries([
+          ['name', 'Alice'],
+          [1, true],
+        ] as const);
+
+        expect(m).toBeInstanceOf(ExactKeyMap);
+        expect(m.size).toBe(2);
+        expect(m.get('name')).toBe('Alice');
+        expect(m.get(1)).toBe(true);
+
+        const name = m.get('name');
+        const boolValue = m.get(1);
+        expectTypeOf(name).toEqualTypeOf<'Alice' | undefined>();
+        expectTypeOf(boolValue).toEqualTypeOf<true | undefined>();
+      });
+
+      it('valid: constructs empty map without generics', () => {
+        const m = new ExactKeyMap();
+        expect(m).toBeInstanceOf(ExactKeyMap);
+        expect(m.size).toBe(0);
+      });
     });
 
     describe('typed arrays', () => {
       it('valid: supports Uint8Array values without misclassification', () => {
         const buf1 = new Uint8Array([1, 2, 3]);
         const buf2 = new Uint8Array([4, 5]);
-        const m = ExactKeyMap.fromEntries([['ccc', buf1]]);
+        const m = new ExactKeyMap<[['ccc', Uint8Array]]>([['ccc', buf1]]);
 
         expect(m).toBeInstanceOf(ExactKeyMap);
         expect(m.size).toBe(1);
@@ -92,7 +151,9 @@ describe('ExactKeyMap', () => {
 
     describe('nested entries', () => {
       it('valid: nested entries are converted to ExactKeyMap', () => {
-        const m = ExactKeyMap.fromEntries([
+        const m = new ExactKeyMap<
+          [['a', number] | ['b', number] | ['c', [['d', [['e', number]]]]]]
+        >([
           ['a', 1],
           ['b', 2],
           ['c', [['d', [['e', 3]]]]],
@@ -103,17 +164,12 @@ describe('ExactKeyMap', () => {
         const c = m.get('c');
         expect(c).toBeInstanceOf(ExactKeyMap);
         expectTypeOf(c).toEqualTypeOf<
-          | ExactKeyMap<
-              readonly [
-                readonly ['d', ExactKeyMap<readonly [readonly ['e', number]]>],
-              ]
-            >
-          | undefined
+          ExactKeyMap<[['d', ExactKeyMap<[['e', number]]>]]> | undefined
         >();
         const d = c?.get('d');
         expect(d).toBeInstanceOf(ExactKeyMap);
         expectTypeOf(d).toEqualTypeOf<
-          ExactKeyMap<readonly [readonly ['e', number]]> | undefined
+          ExactKeyMap<[['e', number]]> | undefined
         >();
         const e = d?.get('e');
         expect(e).toBe(3);
@@ -123,7 +179,9 @@ describe('ExactKeyMap', () => {
 
     describe('delete behavior', () => {
       it("valid: delete('name') returns true and removes the entry; second delete returns false", () => {
-        const m = ExactKeyMap.fromEntries([
+        const m = new ExactKeyMap<
+          [['name', string] | [1, boolean] | ['ccc', number]]
+        >([
           ['name', 'Alice'],
           [1, true],
           ['ccc', 123],
@@ -141,7 +199,9 @@ describe('ExactKeyMap', () => {
       });
 
       it('valid: delete on nested map removes nested key', () => {
-        const m = ExactKeyMap.fromEntries([
+        const m = new ExactKeyMap<
+          [['a', number] | ['b', number] | ['c', [['d', number]]]]
+        >([
           ['a', 1],
           ['b', 2],
           ['c', [['d', 3]]],
@@ -157,30 +217,27 @@ describe('ExactKeyMap', () => {
 
     describe('empty construction', () => {
       it('valid: constructs a typed empty ExactKeyMap', () => {
-        const m = ExactKeyMap.fromEntries([] as const);
+        const m = new ExactKeyMap<[]>([]);
 
         expect(m).toBeInstanceOf(ExactKeyMap);
         expect(m.size).toBe(0);
 
-        // Type-level assertion: an empty entries array yields ExactKeyMap<readonly []>
-        expectTypeOf(m).toEqualTypeOf<ExactKeyMap<readonly []>>();
+        expectTypeOf(m).toEqualTypeOf<ExactKeyMap<[]>>();
       });
 
       it('valid: constructs an empty ExactKeyMap from generics only', () => {
-        const m =
-          ExactKeyMap.withTypes<
-            [['name', string], [1, boolean], ['nested', [['x', number]]]]
-          >();
+        const m = new ExactKeyMap<
+          [['name', string] | [1, boolean] | ['nested', [['x', number]]]]
+        >([]);
 
         expect(m).toBeInstanceOf(ExactKeyMap);
         expect(m.size).toBe(0);
 
-        // Keys and values should be enforced by the generic
         expectTypeOf(m.get('name')).toEqualTypeOf<string | undefined>();
         expectTypeOf(m.get(1)).toEqualTypeOf<boolean | undefined>();
         const nested = m.get('nested');
         expectTypeOf(nested).toEqualTypeOf<
-          ExactKeyMap<[readonly ['x', number]]> | undefined
+          ExactKeyMap<[['x', number]]> | undefined
         >();
 
         m.set('name', 'Alice');
@@ -188,8 +245,7 @@ describe('ExactKeyMap', () => {
         expect(m.get('name')).toBe('Alice');
         expect(m.get(1)).toBe(true);
 
-        const n = ExactKeyMap.withTypes<[['x', number]]>();
-        n.set('x', 1);
+        const n = new ExactKeyMap<[['x', number]]>([['x', 1]]);
         m.set('nested', n);
         expect(m.get('nested')).toBeInstanceOf(ExactKeyMap);
       });
@@ -198,7 +254,7 @@ describe('ExactKeyMap', () => {
     describe('withTypes', () => {
       describe('data input', () => {
         it('valid: withTypes accepts a single entries array', () => {
-          const m = ExactKeyMap.withTypes([
+          const m = new ExactKeyMap<[['name', string] | [1, boolean]]>([
             ['name', 'Alice'],
             [1, true],
           ]);
@@ -212,12 +268,34 @@ describe('ExactKeyMap', () => {
           expectTypeOf(m.get(1)).toEqualTypeOf<boolean | undefined>();
         });
 
+        it("valid: union [['aaa', number] | [string, string]] prioritizes exact key 'aaa'", () => {
+          const m = new ExactKeyMap<[['aaa', number] | [string, string]]>([
+            ['aaa', 1],
+            ['name', 'Alice'],
+          ]);
+
+          expect(m.get('aaa')).toBe(1);
+          expect(m.get('name')).toBe('Alice');
+
+          const vAaa = m.get('aaa');
+          const vOther = m.get('name');
+          expectTypeOf(vAaa).toEqualTypeOf<number | undefined>();
+          expectTypeOf(vOther).toEqualTypeOf<string | undefined>();
+
+          m.set('aaa', 2);
+          m.set('name', 'Bob');
+          expect(m.get('aaa')).toBe(2);
+          expect(m.get('name')).toBe('Bob');
+        });
+
         it('valid: withTypes accepts variadic pairs (including nested)', () => {
-          const m = ExactKeyMap.withTypes(
+          const m = new ExactKeyMap<
+            [['a', number] | ['b', number] | ['nested', [['x', number]]]]
+          >([
             ['a', 1],
             ['b', 2],
             ['nested', [['x', 3]]],
-          );
+          ]);
 
           expect(m).toBeInstanceOf(ExactKeyMap);
           expect(m.size).toBe(3);
@@ -228,7 +306,7 @@ describe('ExactKeyMap', () => {
           expect(nested).toBeInstanceOf(ExactKeyMap);
           const nestedForType = nested;
           expectTypeOf(nestedForType).toEqualTypeOf<
-            ExactKeyMap<readonly [readonly ['x', number]]> | undefined
+            ExactKeyMap<[['x', number]]> | undefined
           >();
           const x = nested?.get('x');
           expect(x).toBe(3);
@@ -236,9 +314,12 @@ describe('ExactKeyMap', () => {
         });
 
         it('valid: withTypes supports generics richer than provided args (set later)', () => {
-          const m = ExactKeyMap.withTypes<
-            [['name', string], [1, boolean], ['nested', [['x', number]]]]
-          >(['name', 'Alice'], ['nested', [['x', 3]]]);
+          const m = new ExactKeyMap<
+            [['name', string] | [1, boolean] | ['nested', [['x', number]]]]
+          >([
+            ['name', 'Alice'],
+            ['nested', [['x', 3]]],
+          ]);
 
           expect(m).toBeInstanceOf(ExactKeyMap);
           expect(m.size).toBe(2);
@@ -247,7 +328,7 @@ describe('ExactKeyMap', () => {
           const nested = m.get('nested');
           expect(nested).toBeInstanceOf(ExactKeyMap);
           expectTypeOf(nested).toEqualTypeOf<
-            ExactKeyMap<[readonly ['x', number]]> | undefined
+            ExactKeyMap<[['x', number]]> | undefined
           >();
           const x = nested?.get('x');
           expect(x).toBe(3);
@@ -261,10 +342,9 @@ describe('ExactKeyMap', () => {
 
         describe('generics only', () => {
           it('valid: constructs an empty ExactKeyMap from generics only', () => {
-            const m =
-              ExactKeyMap.withTypes<
-                [['name', string], [1, boolean], ['nested', [['x', number]]]]
-              >();
+            const m = new ExactKeyMap<
+              [['name', string] | [1, boolean] | ['nested', [['x', number]]]]
+            >();
 
             expect(m).toBeInstanceOf(ExactKeyMap);
             expect(m.size).toBe(0);
@@ -274,7 +354,7 @@ describe('ExactKeyMap', () => {
             expectTypeOf(m.get(1)).toEqualTypeOf<boolean | undefined>();
             const nested = m.get('nested');
             expectTypeOf(nested).toEqualTypeOf<
-              ExactKeyMap<[readonly ['x', number]]> | undefined
+              ExactKeyMap<[['x', number]]> | undefined
             >();
 
             m.set('name', 'Alice');
@@ -282,10 +362,63 @@ describe('ExactKeyMap', () => {
             expect(m.get('name')).toBe('Alice');
             expect(m.get(1)).toBe(true);
 
-            const n = ExactKeyMap.withTypes<[['x', number]]>();
+            const n = new ExactKeyMap<[['x', number]]>();
             n.set('x', 1);
             m.set('nested', n);
             expect(m.get('nested')).toBeInstanceOf(ExactKeyMap);
+          });
+        });
+
+        describe('literals', () => {
+          it("valid: supports literal key and literal value types like ['aaa', 'alice']", () => {
+            const m = new ExactKeyMap<[['aaa', 'alice']]>([['aaa', 'alice']]);
+
+            expect(m).toBeInstanceOf(ExactKeyMap);
+            expect(m.size).toBe(1);
+            expect(m.get('aaa')).toBe('alice');
+
+            const v = m.get('aaa');
+            expectTypeOf(v).toEqualTypeOf<'alice' | undefined>();
+
+            m.set('aaa', 'alice');
+            expect(m.get('aaa')).toBe('alice');
+          });
+
+          it('valid: supports literal key with numeric literal value', () => {
+            const m = new ExactKeyMap<[['bbb', 123]]>([['bbb', 123]]);
+
+            expect(m.get('bbb')).toBe(123);
+            const v = m.get('bbb');
+            expectTypeOf(v).toEqualTypeOf<123 | undefined>();
+
+            m.set('bbb', 123);
+            expect(m.get('bbb')).toBe(123);
+          });
+
+          it("valid: supports union of literal values like ['color', 'red' | 'blue']", () => {
+            const m = new ExactKeyMap<[['color', 'red' | 'blue']]>([
+              ['color', 'red'],
+            ]);
+
+            const v1 = m.get('color');
+            expectTypeOf(v1).toEqualTypeOf<'red' | 'blue' | undefined>();
+
+            m.set('color', 'blue');
+            const v2 = m.get('color');
+            expectTypeOf(v2).toEqualTypeOf<'red' | 'blue' | undefined>();
+            expect(v2).toBe('blue');
+          });
+
+          it('valid: nested entries can use literal values', () => {
+            const m = new ExactKeyMap<[['nested', [['k', 'id']]]]>([
+              ['nested', [['k', 'id']]],
+            ]);
+
+            const nested = m.get('nested');
+            expect(nested).toBeInstanceOf(ExactKeyMap);
+            const v = nested?.get('k');
+            expect(v).toBe('id');
+            expectTypeOf(v).toEqualTypeOf<'id' | undefined>();
           });
         });
 

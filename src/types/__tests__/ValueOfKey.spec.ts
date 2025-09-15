@@ -3,7 +3,7 @@ import type { ValueOfKey } from '../ValueOfKey';
 import type { ExactKeyMap } from '../../exact-key-map/ExactKeyMap';
 
 describe('ValueOfKey', () => {
-  it('extracts widened primitive values', () => {
+  it('preserves primitive literal values', () => {
     type Entries = [['id', 1], ['name', 'foo'], ['active', true]];
     type V1 = ValueOfKey<Entries, 'id'>;
     type V2 = ValueOfKey<Entries, 'name'>;
@@ -13,9 +13,9 @@ describe('ValueOfKey', () => {
     const v2 = null as unknown as V2;
     const v3 = null as unknown as V3;
 
-    expectTypeOf(v1).toEqualTypeOf<number>();
-    expectTypeOf(v2).toEqualTypeOf<string>();
-    expectTypeOf(v3).toEqualTypeOf<boolean>();
+    expectTypeOf(v1).toEqualTypeOf<1>();
+    expectTypeOf(v2).toEqualTypeOf<'foo'>();
+    expectTypeOf(v3).toEqualTypeOf<true>();
   });
 
   it('converts nested entries to ExactKeyMap', () => {
@@ -23,13 +23,11 @@ describe('ValueOfKey', () => {
     type V = ValueOfKey<Nested, 'child'>;
 
     const v = null as unknown as V;
-    expectTypeOf(v).toEqualTypeOf<
-      ExactKeyMap<[['x', number], ['y', number]]>
-    >();
+    expectTypeOf(v).toEqualTypeOf<ExactKeyMap<[['x', 1], ['y', 2]]>>();
   });
 
   it('resolves to never for non-existent keys', () => {
-    type Entries = readonly [['a', 1]];
+    type Entries = [['a', 1]];
     type V = ValueOfKey<Entries, 'b'>;
 
     const v = null as unknown as V;
@@ -37,11 +35,11 @@ describe('ValueOfKey', () => {
   });
 
   it('handles union keys correctly', () => {
-    type Entries = readonly [['a', 1], ['b', 2]];
+    type Entries = [['a', 1], ['b', 2]];
     type V = ValueOfKey<Entries, 'a' | 'b'>;
 
     const v = null as unknown as V;
-    expectTypeOf(v).toEqualTypeOf<number>();
+    expectTypeOf(v).toEqualTypeOf<1 | 2>();
   });
 
   it('supports catch-all enum keys via Exclude and prefers exact matches', () => {

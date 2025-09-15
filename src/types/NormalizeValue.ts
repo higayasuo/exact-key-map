@@ -1,27 +1,37 @@
 import { ExactKeyMap } from '@/exact-key-map/ExactKeyMap';
-import { Widen } from './Widen';
 
 /**
- * Normalizes a value by converting nested entry arrays to ExactKeyMap instances
- * and widening primitive values to their base types.
+ * Normalizes a value by converting nested entry arrays into `ExactKeyMap` instances.
  *
- * This utility type recursively processes values:
- * - If the value is an array of key-value pairs, it converts it to an `ExactKeyMap`
- *   with recursively normalized values.
- * - Otherwise, it widens the value using the `Widen` type.
+ * Behavior:
+ * - If the value is an array of key-value entry pairs, it is converted to an
+ *   `ExactKeyMap` with recursively normalized child values.
+ * - Otherwise, the value is preserved as-is (no widening or transformation).
  *
- * @typeParam V - The value to normalize, which can be a primitive, array of entries, or nested structure.
+ * @typeParam V - The value to normalize. Can be a primitive, an entries array,
+ * or a nested entries structure.
  *
  * @example
  * ```typescript
- * type Primitive = NormalizeValue<'hello'>; // string
- * type Number = NormalizeValue<42>; // number
+ * // Primitives are preserved as-is (no widening)
+ * type S1 = NormalizeValue<'hello'>;  // 'hello'
+ * type S2 = NormalizeValue<string>;   // string
+ * type N1 = NormalizeValue<42>;       // 42
+ * type N2 = NormalizeValue<number>;   // number
+ * type B1 = NormalizeValue<true>;     // true
+ * type B2 = NormalizeValue<boolean>;  // boolean
  *
+ * // Non-entry tuples/arrays are preserved
+ * type T1 = NormalizeValue<[1, 'a']>;             // [1, 'a']
+ * type A1 = NormalizeValue<Array<number>>;        // Array<number>
+ * type RO = NormalizeValue<readonly ['x', 1]>;    // readonly ['x', 1]
+ *
+ * // Entries become ExactKeyMap with recursively normalized child values
  * type Entries = NormalizeValue<[['name', 'Alice'], ['age', 30]]>;
- * // ExactKeyMap<[['name', string], ['age', number]]>
+ * // ExactKeyMap<[['name', 'Alice'], ['age', 30]]>
  *
  * type Nested = NormalizeValue<[['profile', [['id', 1]]]]>;
- * // ExactKeyMap<[['profile', ExactKeyMap<[['id', number]]>]]>
+ * // ExactKeyMap<[['profile', ExactKeyMap<[['id', 1]]>]]>
  * ```
  */
 export type NormalizeValue<V> = V extends readonly (readonly [
@@ -33,4 +43,4 @@ export type NormalizeValue<V> = V extends readonly (readonly [
         ? [Key, NormalizeValue<Val>]
         : V[I];
     }>
-  : Widen<V>;
+  : V;

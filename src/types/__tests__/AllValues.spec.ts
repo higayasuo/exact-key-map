@@ -1,41 +1,37 @@
 import { describe, it, expectTypeOf } from 'vitest';
 import type { AllValues } from '../AllValues';
-import type { ExactKeyMap } from '../../exact-key-map/ExactKeyMap';
+import type { ExactKeyMap } from '@/exact-key-map/ExactKeyMap';
 
 describe('AllValues', () => {
-  it('creates union of widened primitive values', () => {
-    type Entries = readonly [['id', 1], ['name', 'foo'], ['active', true]];
+  it('creates union of literal primitive values', () => {
+    type Entries = [['id', 1] | ['name', 'foo'] | ['active', true]];
     type Values = AllValues<Entries>;
 
     const values = null as unknown as Values;
-    expectTypeOf(values).toEqualTypeOf<number | string | boolean>();
+    expectTypeOf(values).toEqualTypeOf<1 | 'foo' | true>();
   });
 
-  it('handles nested ExactKeyMap values', () => {
-    type Nested = readonly [['child', readonly [['x', 1], ['y', 2]]]];
+  it('handles nested ExactKeyMap values (literals preserved)', () => {
+    type Nested = [['child', [['x', 1], ['y', 2]]]];
     type Values = AllValues<Nested>;
 
     const values = null as unknown as Values;
-    expectTypeOf(values).toEqualTypeOf<
-      ExactKeyMap<readonly [['x', number], ['y', number]]>
-    >();
+    expectTypeOf(values).toEqualTypeOf<ExactKeyMap<[['x', 1], ['y', 2]]>>();
   });
 
-  it('handles mixed primitive and nested values', () => {
-    type Mixed = readonly [['id', 1], ['config', readonly [['debug', true]]]];
+  it('handles mixed literal and nested literal values', () => {
+    type Mixed = [['id', 1] | ['config', [['debug', true]]]];
     type Values = AllValues<Mixed>;
 
     const values = null as unknown as Values;
-    expectTypeOf(values).toEqualTypeOf<
-      number | ExactKeyMap<readonly [['debug', boolean]]>
-    >();
+    expectTypeOf(values).toEqualTypeOf<1 | ExactKeyMap<[['debug', true]]>>();
   });
 
   it('preserves non-primitive object types without widening', () => {
-    type WithObjects = readonly [
-      ['buffer', Uint8Array],
-      ['config', { debug: boolean }],
-      ['callback', () => void],
+    type WithObjects = [
+      | ['buffer', Uint8Array]
+      | ['config', { debug: boolean }]
+      | ['callback', () => void],
     ];
     type Values = AllValues<WithObjects>;
 
@@ -46,18 +42,18 @@ describe('AllValues', () => {
   });
 
   it('resolves to never for empty entries', () => {
-    type Empty = readonly [];
+    type Empty = [];
     type Values = AllValues<Empty>;
 
     const values = null as unknown as Values;
     expectTypeOf(values).toEqualTypeOf<never>();
   });
 
-  it('handles single entry correctly', () => {
-    type Single = readonly [['key', 'value']];
+  it('handles single entry correctly (literal preserved)', () => {
+    type Single = [['key', 'value']];
     type Values = AllValues<Single>;
 
     const values = null as unknown as Values;
-    expectTypeOf(values).toEqualTypeOf<string>();
+    expectTypeOf(values).toEqualTypeOf<'value'>();
   });
 });

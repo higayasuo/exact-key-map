@@ -9,18 +9,19 @@ import type { ValueOfKey } from './ValueOfKey';
  * creates a union of all those value types. It's used internally by
  * `ExactKeyMap` to define the value type of the underlying `Map`.
  *
- * - For primitive values, they are widened to their base primitives
- * - For nested entry arrays, they become `ExactKeyMap` instances
- * - The result is a union of all possible value types
+ * - Primitive values are preserved as-is (no widening)
+ * - Nested entry arrays become `ExactKeyMap` instances (with recursively
+ *   normalized child values)
+ * - The result is a union of all possible value types for the provided entries
  *
  * @typeParam Entries - A readonly list of readonly `[Key, Value]` pairs.
  * @example
  *   type E = readonly [["id", 1], ["name", "foo"], ["active", true]];
- *   type Values = AllValues<E>; // number | string | boolean
+ *   type Values = AllValues<E>; // 1 | "foo" | true
  *
  * @example
  *   type Nested = readonly [["child", [["x", 1]]]];
- *   type Values = AllValues<Nested>; // ExactKeyMap<[["x", number]]>
+ *   type Values = AllValues<Nested>; // ExactKeyMap<[["x", 1]]>
  */
 export type AllValues<
   Entries extends readonly (readonly [unknown, unknown])[],

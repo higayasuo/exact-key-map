@@ -5,7 +5,7 @@ import type { ValueOfKey } from '../ValueOfKey';
 import type { ExtractExactKeyMapGenerics } from '../ExtractExactKeyMapGenerics';
 
 describe('NormalizeValue', () => {
-  it('widens primitive literal values', () => {
+  it('preserves primitive literal values', () => {
     type S = NormalizeValue<'hello'>;
     type N = NormalizeValue<42>;
     type B = NormalizeValue<true>;
@@ -16,22 +16,22 @@ describe('NormalizeValue', () => {
     const b = null as unknown as B;
     const u8 = null as unknown as U8;
 
-    expectTypeOf(s).toEqualTypeOf<string>();
-    expectTypeOf(n).toEqualTypeOf<number>();
-    expectTypeOf(b).toEqualTypeOf<boolean>();
+    expectTypeOf(s).toEqualTypeOf<'hello'>();
+    expectTypeOf(n).toEqualTypeOf<42>();
+    expectTypeOf(b).toEqualTypeOf<true>();
     expectTypeOf(u8).toEqualTypeOf<Uint8Array>();
   });
 
-  it('converts flat entry arrays to ExactKeyMap with widened values', () => {
+  it('converts flat entry arrays to ExactKeyMap preserving literals', () => {
     type V = NormalizeValue<[['name', 'Alice'], ['age', 30]]>;
 
     const v = null as unknown as V;
     expectTypeOf(v).toEqualTypeOf<
-      ExactKeyMap<[['name', string], ['age', number]]>
+      ExactKeyMap<[['name', 'Alice'], ['age', 30]]>
     >();
   });
 
-  it('recursively converts nested entry arrays to nested ExactKeyMap', () => {
+  it('recursively converts nested entry arrays to nested ExactKeyMap preserving literals', () => {
     type V = NormalizeValue<[['profile', [['id', 1], ['enabled', true]]]]>;
 
     // Extract entries from the outer ExactKeyMap
@@ -48,8 +48,8 @@ describe('NormalizeValue', () => {
       'enabled'
     >;
 
-    expectTypeOf(id).toEqualTypeOf<number>();
-    expectTypeOf(enabled).toEqualTypeOf<boolean>();
+    expectTypeOf(id).toEqualTypeOf<1>();
+    expectTypeOf(enabled).toEqualTypeOf<true>();
   });
 
   it('supports deeper nesting levels', () => {
@@ -62,6 +62,6 @@ describe('NormalizeValue', () => {
     type E3 = ExtractExactKeyMapGenerics<BMap>;
 
     const c = null as unknown as ValueOfKey<E3, 'c'>;
-    expectTypeOf(c).toEqualTypeOf<number>();
+    expectTypeOf(c).toEqualTypeOf<3>();
   });
 });
