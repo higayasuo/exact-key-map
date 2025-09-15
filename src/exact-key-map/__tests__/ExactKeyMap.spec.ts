@@ -64,8 +64,10 @@ describe('ExactKeyMap', () => {
 
         // type-checks for the same data
         const ccc = m.get('ccc');
-        expectTypeOf(m.get('name')).toEqualTypeOf<string | undefined>();
-        expectTypeOf(m.get(1)).toEqualTypeOf<boolean | undefined>();
+        const nameValue = m.get('name');
+        const boolValue = m.get(1);
+        expectTypeOf(nameValue).toEqualTypeOf<string | undefined>();
+        expectTypeOf(boolValue).toEqualTypeOf<boolean | undefined>();
         expectTypeOf(ccc).toEqualTypeOf<Date | undefined>();
       });
     });
@@ -193,30 +195,156 @@ describe('ExactKeyMap', () => {
       });
     });
 
-    it('valid: protected headers accepts residual enum keys (Uint8Array values)', () => {
-      const headers = createProtectedHeaders();
+    describe('withTypes', () => {
+      describe('data input', () => {
+        it('valid: withTypes accepts a single entries array', () => {
+          const m = ExactKeyMap.withTypes([
+            ['name', 'Alice'],
+            [1, true],
+          ]);
 
-      headers.set(Headers.IV, new Uint8Array([0x10, 0x20, 0x30]));
-      headers.set(Headers.PartialIV, new Uint8Array([0x40, 0x50, 0x60]));
-      headers.set(Headers.X5Bag, new Uint8Array([0x70, 0x80, 0x90]));
-      headers.set(Headers.X5T, new Uint8Array([0xa0, 0xb0, 0xc0]));
-      headers.set(Headers.X5U, new Uint8Array([0xd0, 0xe0, 0xf0]));
+          expect(m).toBeInstanceOf(ExactKeyMap);
+          expect(m.size).toBe(2);
+          expect(m.get('name')).toBe('Alice');
+          expect(m.get(1)).toBe(true);
 
-      expect(headers.get(Headers.IV)).toEqual(
-        new Uint8Array([0x10, 0x20, 0x30]),
-      );
-      expect(headers.get(Headers.PartialIV)).toEqual(
-        new Uint8Array([0x40, 0x50, 0x60]),
-      );
-      expect(headers.get(Headers.X5Bag)).toEqual(
-        new Uint8Array([0x70, 0x80, 0x90]),
-      );
-      expect(headers.get(Headers.X5T)).toEqual(
-        new Uint8Array([0xa0, 0xb0, 0xc0]),
-      );
-      expect(headers.get(Headers.X5U)).toEqual(
-        new Uint8Array([0xd0, 0xe0, 0xf0]),
-      );
+          expectTypeOf(m.get('name')).toEqualTypeOf<string | undefined>();
+          expectTypeOf(m.get(1)).toEqualTypeOf<boolean | undefined>();
+        });
+
+        it('valid: withTypes accepts variadic pairs (including nested)', () => {
+          const m = ExactKeyMap.withTypes(
+            ['a', 1],
+            ['b', 2],
+            ['nested', [['x', 3]]],
+          );
+
+          expect(m).toBeInstanceOf(ExactKeyMap);
+          expect(m.size).toBe(3);
+          expect(m.get('a')).toBe(1);
+          expect(m.get('b')).toBe(2);
+
+          const nested = m.get('nested');
+          expect(nested).toBeInstanceOf(ExactKeyMap);
+          const nestedForType = nested;
+          expectTypeOf(nestedForType).toEqualTypeOf<
+            ExactKeyMap<readonly [readonly ['x', number]]> | undefined
+          >();
+          const x = nested?.get('x');
+          expect(x).toBe(3);
+          expectTypeOf(x).toEqualTypeOf<number | undefined>();
+        });
+
+        it('valid: withTypes supports generics richer than provided args (set later)', () => {
+          const m = ExactKeyMap.withTypes<
+            [['name', string], [1, boolean], ['nested', [['x', number]]]]
+          >(['name', 'Alice'], ['nested', [['x', 3]]]);
+
+          expect(m).toBeInstanceOf(ExactKeyMap);
+          expect(m.size).toBe(2);
+          expect(m.get('name')).toBe('Alice');
+
+          const nested = m.get('nested');
+          expect(nested).toBeInstanceOf(ExactKeyMap);
+          expectTypeOf(nested).toEqualTypeOf<
+            ExactKeyMap<[readonly ['x', number]]> | undefined
+          >();
+          const x = nested?.get('x');
+          expect(x).toBe(3);
+          expectTypeOf(x).toEqualTypeOf<number | undefined>();
+
+          // Missing key from generics can be set later
+          m.set(1, false);
+          expect(m.get(1)).toBe(false);
+          expectTypeOf(m.get(1)).toEqualTypeOf<boolean | undefined>();
+        });
+
+        describe('generics only', () => {
+          it('valid: constructs an empty ExactKeyMap from generics only', () => {
+            const m =
+              ExactKeyMap.withTypes<
+                [['name', string], [1, boolean], ['nested', [['x', number]]]]
+              >();
+
+            expect(m).toBeInstanceOf(ExactKeyMap);
+            expect(m.size).toBe(0);
+
+            // Keys and values should be enforced by the generic
+            expectTypeOf(m.get('name')).toEqualTypeOf<string | undefined>();
+            expectTypeOf(m.get(1)).toEqualTypeOf<boolean | undefined>();
+            const nested = m.get('nested');
+            expectTypeOf(nested).toEqualTypeOf<
+              ExactKeyMap<[readonly ['x', number]]> | undefined
+            >();
+
+            m.set('name', 'Alice');
+            m.set(1, true);
+            expect(m.get('name')).toBe('Alice');
+            expect(m.get(1)).toBe(true);
+
+            const n = ExactKeyMap.withTypes<[['x', number]]>();
+            n.set('x', 1);
+            m.set('nested', n);
+            expect(m.get('nested')).toBeInstanceOf(ExactKeyMap);
+          });
+        });
+
+        describe('special cases', () => {
+          it('valid: protected headers accepts residual enum keys (Uint8Array values)', () => {
+            const headers = createProtectedHeaders();
+
+            headers.set(Headers.IV, new Uint8Array([0x10, 0x20, 0x30]));
+            headers.set(Headers.PartialIV, new Uint8Array([0x40, 0x50, 0x60]));
+            headers.set(Headers.X5Bag, new Uint8Array([0x70, 0x80, 0x90]));
+            headers.set(Headers.X5T, new Uint8Array([0xa0, 0xb0, 0xc0]));
+            headers.set(Headers.X5U, new Uint8Array([0xd0, 0xe0, 0xf0]));
+
+            expect(headers.get(Headers.IV)).toEqual(
+              new Uint8Array([0x10, 0x20, 0x30]),
+            );
+            expect(headers.get(Headers.PartialIV)).toEqual(
+              new Uint8Array([0x40, 0x50, 0x60]),
+            );
+            expect(headers.get(Headers.X5Bag)).toEqual(
+              new Uint8Array([0x70, 0x80, 0x90]),
+            );
+            expect(headers.get(Headers.X5T)).toEqual(
+              new Uint8Array([0xa0, 0xb0, 0xc0]),
+            );
+            expect(headers.get(Headers.X5U)).toEqual(
+              new Uint8Array([0xd0, 0xe0, 0xf0]),
+            );
+          });
+        });
+      });
+
+      describe('special cases', () => {
+        it('valid: protected headers accepts residual enum keys (Uint8Array values)', () => {
+          const headers = createProtectedHeaders();
+
+          headers.set(Headers.IV, new Uint8Array([0x10, 0x20, 0x30]));
+          headers.set(Headers.PartialIV, new Uint8Array([0x40, 0x50, 0x60]));
+          headers.set(Headers.X5Bag, new Uint8Array([0x70, 0x80, 0x90]));
+          headers.set(Headers.X5T, new Uint8Array([0xa0, 0xb0, 0xc0]));
+          headers.set(Headers.X5U, new Uint8Array([0xd0, 0xe0, 0xf0]));
+
+          expect(headers.get(Headers.IV)).toEqual(
+            new Uint8Array([0x10, 0x20, 0x30]),
+          );
+          expect(headers.get(Headers.PartialIV)).toEqual(
+            new Uint8Array([0x40, 0x50, 0x60]),
+          );
+          expect(headers.get(Headers.X5Bag)).toEqual(
+            new Uint8Array([0x70, 0x80, 0x90]),
+          );
+          expect(headers.get(Headers.X5T)).toEqual(
+            new Uint8Array([0xa0, 0xb0, 0xc0]),
+          );
+          expect(headers.get(Headers.X5U)).toEqual(
+            new Uint8Array([0xd0, 0xe0, 0xf0]),
+          );
+        });
+      });
     });
   });
 });

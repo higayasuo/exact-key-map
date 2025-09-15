@@ -92,18 +92,42 @@ const name = constMap.get('name'); // 'Alice' | undefined (literal type preserve
 
 ### ExactKeyMap.withTypes
 
-Create an empty map with predefined types for later population:
+Create a strongly-typed map by specifying types up front, with flexible initialization options.
+
+Supported call forms:
 
 ```typescript
-const typedMap =
+// 1) No arguments: declare shape up front, populate later
+const m0 =
   ExactKeyMap.withTypes<
     [['name', string], ['age', number], ['isActive', boolean]]
   >();
+m0.set('name', 'Alice');
 
-// All operations are type-safe
-typedMap.set('name', 'Alice'); // ✅ Valid
-typedMap.set('age', 30); // ✅ Valid
-typedMap.get('isActive'); // boolean | undefined
+// 2) Single entries array
+const m1 = ExactKeyMap.withTypes([
+  ['name', 'Alice'],
+  ['age', 30],
+]);
+
+// 3) Variadic entry pairs
+const m2 = ExactKeyMap.withTypes(['name', 'Alice'], ['age', 30]);
+
+// 4) Explicit generics + subset data (later populate remaining keys)
+const m3 = ExactKeyMap.withTypes<
+  [['name', string], ['age', number], ['isActive', boolean]]
+>(['name', 'Alice']);
+m3.set('age', 30);
+m3.set('isActive', true);
+
+// Note: Nested entry arrays are automatically converted to nested ExactKeyMap instances
+const nested = ExactKeyMap.withTypes([
+  'config',
+  [
+    ['host', 'localhost'],
+    ['port', 5432],
+  ],
+]);
 ```
 
 ## Nested Maps
@@ -155,11 +179,13 @@ A strongly-typed Map class that extends the native `Map` with exact key typing.
 ```typescript
 ExactKeyMap.fromEntries(entries);
 ExactKeyMap.fromEntries(...entries);
+ExactKeyMap.withTypes(entries);
+ExactKeyMap.withTypes(...entries);
 ExactKeyMap.withTypes<Entries>();
 ```
 
 - `fromEntries` creates a map from entry tuples; nested entry arrays become nested `ExactKeyMap`s.
-- `withTypes` creates an empty map with predefined types for later population.
+- `withTypes` creates a strongly-typed map from: no args (empty), a single entries array, or variadic pairs. You can also provide explicit generics with data that is a subset of the declared shape and populate the rest later.
 
 Note: The constructor is `protected`. Prefer the static factories above.
 

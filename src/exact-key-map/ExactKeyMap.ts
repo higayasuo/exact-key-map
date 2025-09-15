@@ -127,7 +127,9 @@ export class ExactKeyMap<
    * Nested entry arrays in the generic will be transformed to nested `ExactKeyMap` types.
    *
    * @typeParam E - A readonly array of `[Key, Value]` pairs defining the desired map shape
-   * @returns An empty `ExactKeyMap` with the specified type
+   * @returns An `ExactKeyMap` with the specified type. If no arguments are provided,
+   * returns an empty map. You may also pass either a single entries array or variadic
+   * entry pairs to initialize the map.
    *
    * @example
    * ```ts
@@ -140,12 +142,36 @@ export class ExactKeyMap<
    * m.get(1);               // boolean | undefined
    * ```
    */
-  static withTypes = <
-    const E extends readonly (readonly [unknown, unknown])[],
-  >(): ExactKeyMap<TransformNestedEntries<E>> => {
-    // Construct an empty ExactKeyMap with the target generic shape.
+  static withTypes: {
+    // Inference from a single entries array
+    <const E extends readonly (readonly [unknown, unknown])[]>(
+      entries: E,
+    ): ExactKeyMap<TransformNestedEntries<E>>;
+    // Inference from variadic entries
+    <const E extends readonly (readonly [unknown, unknown])[]>(
+      ...entries: E
+    ): ExactKeyMap<TransformNestedEntries<E>>;
+    // Explicit generic with no args
+    <const E extends readonly (readonly [unknown, unknown])[]>(): ExactKeyMap<
+      TransformNestedEntries<E>
+    >;
+    // Explicit generic with variadic unknown pairs (args may be subset of generic shape)
+    <const E extends readonly (readonly [unknown, unknown])[]>(
+      ...entries: readonly [unknown, unknown][]
+    ): ExactKeyMap<TransformNestedEntries<E>>;
+    // Explicit generic with single entries array (args may be subset of generic shape)
+    <const E extends readonly (readonly [unknown, unknown])[]>(
+      entries: ReadonlyArray<readonly [unknown, unknown]>,
+    ): ExactKeyMap<TransformNestedEntries<E>>;
+  } = <const E extends readonly (readonly [unknown, unknown])[]>(
+    first?: ReadonlyArray<readonly unknown[]> | readonly [unknown, unknown],
+    ...rest: readonly [unknown, unknown][]
+  ): ExactKeyMap<TransformNestedEntries<E>> => {
+    const arr = first === undefined ? [] : toEntriesArray(first, ...rest);
+
+    // Construct an ExactKeyMap with the target generic shape and initial data.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return new ExactKeyMap([] as unknown as E) as any;
+    return new ExactKeyMap(arr as unknown as E) as any;
   };
 
   /**
