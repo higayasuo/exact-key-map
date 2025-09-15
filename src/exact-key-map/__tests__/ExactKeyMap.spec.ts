@@ -35,8 +35,11 @@ type ProtectedHeadersEntries = (
     ]
 )[];
 
-const createProtectedHeaders = (): ExactKeyMap<ProtectedHeadersEntries> =>
-  new ExactKeyMap<ProtectedHeadersEntries>();
+class ProtectedHeaders extends ExactKeyMap<ProtectedHeadersEntries> {
+  constructor(entries?: ProtectedHeadersEntries) {
+    super(entries);
+  }
+}
 
 describe('ExactKeyMap', () => {
   describe('constructor', () => {
@@ -424,7 +427,7 @@ describe('ExactKeyMap', () => {
 
         describe('special cases', () => {
           it('valid: protected headers accepts residual enum keys (Uint8Array values)', () => {
-            const headers = createProtectedHeaders();
+            const headers = new ProtectedHeaders();
 
             headers.set(Headers.IV, new Uint8Array([0x10, 0x20, 0x30]));
             headers.set(Headers.PartialIV, new Uint8Array([0x40, 0x50, 0x60]));
@@ -453,7 +456,7 @@ describe('ExactKeyMap', () => {
 
       describe('special cases', () => {
         it('valid: protected headers accepts residual enum keys (Uint8Array values)', () => {
-          const headers = createProtectedHeaders();
+          const headers = new ProtectedHeaders();
 
           headers.set(Headers.IV, new Uint8Array([0x10, 0x20, 0x30]));
           headers.set(Headers.PartialIV, new Uint8Array([0x40, 0x50, 0x60]));
@@ -476,6 +479,32 @@ describe('ExactKeyMap', () => {
           expect(headers.get(Headers.X5U)).toEqual(
             new Uint8Array([0xd0, 0xe0, 0xf0]),
           );
+        });
+
+        it('valid: sets and gets Headers.IV on ProtectedHeaders', () => {
+          const headers = new ProtectedHeaders();
+
+          const iv = new Uint8Array([0x01, 0x02, 0x03]);
+          headers.set(Headers.IV, iv);
+
+          expect(headers.get(Headers.IV)).toEqual(iv);
+
+          const ivValue = headers.get(Headers.IV);
+          expectTypeOf(ivValue).toEqualTypeOf<
+            Uint8Array | Uint8Array[] | number | number[] | undefined
+          >();
+        });
+
+        it('valid: constructs ProtectedHeaders with Headers.IV via constructor', () => {
+          const iv = new Uint8Array([0x01, 0x02, 0x03]);
+          const headers = new ProtectedHeaders([[Headers.IV, iv]]);
+
+          expect(headers.get(Headers.IV)).toEqual(iv);
+
+          const ivValue = headers.get(Headers.IV);
+          expectTypeOf(ivValue).toEqualTypeOf<
+            Uint8Array | Uint8Array[] | number | number[] | undefined
+          >();
         });
       });
     });
