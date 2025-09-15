@@ -104,6 +104,88 @@ const username = credentials?.get('username');
 // Type: string | undefined
 ```
 
+## Extending ExactKeyMap
+
+You can create custom classes that extend `ExactKeyMap` for domain-specific use cases:
+
+```typescript
+// Define your domain-specific types
+enum Headers {
+  Algorithm = 1,
+  Critical = 2,
+  ContentType = 3,
+  KeyID = 4,
+  IV = 5,
+  PartialIV = 6,
+  // ... more headers
+}
+
+// Define the exact entries type for your domain
+type ProtectedHeadersEntries = (
+  | [Headers.Algorithm, number]
+  | [Headers.Critical, Headers[]]
+  | [Headers.ContentType, number | Uint8Array]
+  | [Headers.KeyID, Uint8Array]
+  | [
+      Exclude<
+        Headers,
+        | Headers.Algorithm
+        | Headers.Critical
+        | Headers.ContentType
+        | Headers.KeyID
+      >,
+      Uint8Array | Uint8Array[] | number | number[],
+    ]
+)[];
+
+// Extend ExactKeyMap with your custom class
+class ProtectedHeaders extends ExactKeyMap<ProtectedHeadersEntries> {
+  constructor(entries?: ProtectedHeadersEntries) {
+    super(entries);
+  }
+
+  // Add domain-specific methods
+  hasAlgorithm(): boolean {
+    return this.has(Headers.Algorithm);
+  }
+
+  getAlgorithm(): number | undefined {
+    return this.get(Headers.Algorithm);
+  }
+
+  setIV(iv: Uint8Array): this {
+    return this.set(Headers.IV, iv);
+  }
+}
+
+// Use your custom class - empty constructor
+const headers = new ProtectedHeaders();
+headers.set(Headers.Algorithm, 1);
+headers.setIV(new Uint8Array([0x01, 0x02, 0x03]));
+
+// Use your custom class - with initial data (inline)
+const headersWithData = new ProtectedHeaders([
+  [Headers.Algorithm, 1],
+  [Headers.KeyID, new Uint8Array([0xaa, 0xbb, 0xcc])],
+  [Headers.IV, new Uint8Array([0x01, 0x02, 0x03])],
+]);
+
+// Use your custom class - with initial data (non-inline, using variables)
+const entries: ProtectedHeadersEntries = [
+  [Headers.Algorithm, 1],
+  [Headers.KeyID, new Uint8Array([0xaa, 0xbb, 0xcc])],
+  [Headers.IV, new Uint8Array([0x01, 0x02, 0x03])],
+];
+const headersFromVariable = new ProtectedHeaders(entries);
+
+// Type safety is preserved
+const algorithm = headers.get(Headers.Algorithm); // number | undefined
+const iv = headers.get(Headers.IV); // Uint8Array | Uint8Array[] | number | number[] | undefined
+
+// Constructor with data preserves all type safety
+const keyId = headersWithData.get(Headers.KeyID); // Uint8Array | undefined
+```
+
 ## API Reference
 
 ### `ExactKeyMap<Entries>`
