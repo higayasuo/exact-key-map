@@ -7,6 +7,7 @@ A strongly-typed `Map` extension for TypeScript that enforces exact key/value re
 - 🔒 **Exact Key Types**: Keys are enforced exactly via union-of-tuples generics
 - 🏗️ **Nested Support**: Nested entry arrays are automatically converted to nested `ExactKeyMap` instances
 - 🔤 **Literal-Friendly**: Use `ExactKeyMap.fromEntries([... ] as const)` to preserve literal value types when desired
+- 📦 **Zero Dependencies**: No external dependencies - lightweight and fast
 - 🎯 **TypeScript First**: Built with TypeScript and provides excellent type inference
 - 🧪 **Fully Tested**: Comprehensive test suite with 82 tests
 
