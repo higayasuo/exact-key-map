@@ -6,7 +6,7 @@ A strongly-typed `Map` extension for TypeScript that enforces exact key/value re
 
 - 🔒 **Exact Key Types**: Keys are enforced exactly via union-of-tuples generics
 - 🏗️ **Nested Support**: Nested entry arrays are automatically converted to nested `ExactKeyMap` instances
-- 🔤 **Literal-Friendly**: Use `ExactKeyMap.fromEntries([... ] as const)` to preserve literal value types when desired
+- 🔤 **Literal-Friendly**: Use `new ExactKeyMap([... ] as const)` to preserve literal value types when desired
 - 📦 **Zero Dependencies**: No external dependencies - lightweight and fast
 - 🎯 **TypeScript First**: Built with TypeScript and provides excellent type inference
 - 🧪 **Fully Tested**: Comprehensive test suite with 82 tests
@@ -22,10 +22,11 @@ npm install exact-key-map
 ```typescript
 import { ExactKeyMap } from 'exact-key-map';
 
-// Create a map using union-of-tuples generics
-const userMap = new ExactKeyMap<
-  [['name', string] | ['age', number] | ['isActive', boolean]]
->([
+// Create a map using union-of-tuples generics (via Es)
+type UserEntries = Es<
+  ['name', string] | ['age', number] | ['isActive', boolean]
+>;
+const userMap = new ExactKeyMap<UserEntries>([
   ['name', 'Alice'],
   ['age', 30],
   ['isActive', true],
@@ -41,7 +42,7 @@ userMap.set('isActive', false); // ✅ Valid
 // userMap.set('invalid', 'value'); // ❌ TypeScript error
 
 // Preserve literals when needed
-const literals = ExactKeyMap.fromEntries([
+const literals = new ExactKeyMap([
   ['name', 'Alice'],
   ['age', 30],
 ] as const);
@@ -57,19 +58,14 @@ The standard map with strict type safety - only predefined keys can be used.
 ## Nested Maps
 
 ```typescript
-const config = new ExactKeyMap<
-  [
-    | [
-        'database',
-        [
-          | ['host', string]
-          | ['port', number]
-          | ['credentials', [['username', string] | ['password', string]]],
-        ],
-      ]
-    | ['api', [['baseUrl', string] | ['timeout', number]]],
-  ]
->([
+type CredentialsEntries = Es<['username', string] | ['password', string]>;
+type DatabaseEntries = Es<
+  ['host', string] | ['port', number] | ['credentials', CredentialsEntries]
+>;
+type ApiEntries = Es<['baseUrl', string] | ['timeout', number]>;
+type ConfigEntries = Es<['database', DatabaseEntries] | ['api', ApiEntries]>;
+
+const config = new ExactKeyMap<ConfigEntries>([
   [
     'database',
     [
@@ -95,10 +91,20 @@ const config = new ExactKeyMap<
 
 // Nested maps are automatically created
 const db = config.get('database');
-// Type: ExactKeyMap<[['host', string], ['port', number], ['credentials', ExactKeyMap<[]...]]>]> | undefined
+// Type: ExactKeyMap<ReadonlyArray<
+//   ['host', string] |
+//   ['port', number] |
+//   ['credentials', ExactKeyMap<ReadonlyArray<
+//     ['username', string] |
+//     ['password', string]
+//   >>]
+// >> | undefined
 
 const credentials = db?.get('credentials');
-// Type: ExactKeyMap<[['username', string], ['password', string]]> | undefined
+// Type: ExactKeyMap<ReadonlyArray<
+//   ['username', string] |
+//   ['password', string]
+// >> | undefined
 
 const username = credentials?.get('username');
 // Type: string | undefined
@@ -121,7 +127,7 @@ enum Headers {
 }
 
 // Define the exact entries type for your domain
-type ProtectedHeadersEntries = (
+type ProtectedHeadersEntries = Es<
   | [Headers.Algorithm, number]
   | [Headers.Critical, Headers[]]
   | [Headers.ContentType, number | Uint8Array]
@@ -136,7 +142,7 @@ type ProtectedHeadersEntries = (
       >,
       Uint8Array | Uint8Array[] | number | number[],
     ]
-)[];
+>;
 
 // Extend ExactKeyMap with your custom class
 class ProtectedHeaders extends ExactKeyMap<ProtectedHeadersEntries> {
@@ -195,20 +201,21 @@ A strongly-typed Map class that extends the native `Map` with exact key typing.
 #### Construction
 
 ```typescript
-// Union-of-tuples generics
-new ExactKeyMap<[['name', string] | ['age', number]]>([
+// Union-of-tuples generics via Es
+type Entries = Es<['name', string] | ['age', number]>;
+new ExactKeyMap<Entries>([
   ['name', 'Alice'],
   ['age', 30],
 ]);
 
 // Preserve literal values via const-generic factory
-ExactKeyMap.fromEntries([
+new ExactKeyMap([
   ['name', 'Alice'],
   ['age', 30],
 ] as const);
 ```
 
-- `fromEntries(entries)` creates a map from entry tuples and preserves literal value types with `as const`.
+- Passing `entries` with `as const` to the constructor preserves literal value types.
 
 #### Methods
 
@@ -217,7 +224,8 @@ ExactKeyMap.fromEntries([
 Retrieves a value by key with exact type inference.
 
 ```typescript
-const map = new ExactKeyMap<[['name', string] | [1, boolean]]>([
+type Entries = Es<['name', string] | [1, boolean]>;
+const map = new ExactKeyMap<Entries>([
   ['name', 'Alice'],
   [1, true],
 ]);
@@ -230,7 +238,8 @@ const value = map.get(1); // boolean | undefined
 Sets a value with type safety.
 
 ```typescript
-const map = new ExactKeyMap<[['name', string] | [1, boolean]]>([
+type Entries = Es<['name', string] | [1, boolean]>;
+const map = new ExactKeyMap<Entries>([
   ['name', 'Alice'],
   [1, true],
 ]);
@@ -244,10 +253,10 @@ map.set(1, false); // ✅ Valid
 Removes a key-value pair with type safety.
 
 ```typescript
-const map = ExactKeyMap.fromEntries([
+const map = new ExactKeyMap([
   ['name', 'Alice'],
   [1, true],
-]);
+] as const);
 map.delete('name'); // ✅ Valid, returns true
 map.delete(1); // ✅ Valid, returns true
 map.delete('name'); // ✅ Valid, returns false (already deleted)
@@ -255,6 +264,44 @@ map.delete('name'); // ✅ Valid, returns false (already deleted)
 ```
 
 ### Type Utilities
+
+Type utilities operate on entry lists represented as `Es<...>` (a `ReadonlyArray` of union-of-entry tuples).
+
+#### `Es<Entries>`
+
+Represents a readonly array of entry tuples. Each entry tuple is a key/value pair `['key', Value]`. Use `Es` to define the entries for `ExactKeyMap`, including nested structures.
+
+```typescript
+// Basic entries
+type Entries = Es<['id', number] | ['name', string]>;
+const map = new ExactKeyMap<Entries>([
+  ['id', 1],
+  ['name', 'Alice'],
+]);
+
+// Nested entries
+type CredentialsEntries = Es<['username', string] | ['password', string]>;
+type DatabaseEntries = Es<
+  ['host', string] | ['port', number] | ['credentials', CredentialsEntries]
+>;
+type ConfigEntries = Es<['database', DatabaseEntries]>;
+const config = new ExactKeyMap<ConfigEntries>([
+  [
+    'database',
+    [
+      ['host', 'localhost'],
+      ['port', 5432],
+      [
+        'credentials',
+        [
+          ['username', 'admin'],
+          ['password', 'secret'],
+        ],
+      ],
+    ],
+  ],
+]);
+```
 
 #### `KeysOfEntries<Entries>`
 
@@ -292,60 +339,56 @@ Extracts the generic entries parameter from an `ExactKeyMap`.
 import type { ExtractExactKeyMapGenerics } from 'exact-key-map';
 
 type M = ExactKeyMap<
-  [
-    ['id', number],
-    ['profile', ExactKeyMap<[['name', string], ['age', number]]>],
-  ]
+  ReadonlyArray<
+    | ['id', number]
+    | [
+        'profile',
+        ExactKeyMap<ReadonlyArray<['name', string] | ['age', number]>>,
+      ]
+  >
 >;
-// M => ExactKeyMap<[
-//   ['id', number],
-//   ['profile', ExactKeyMap<[
-//     ['name', string],
-//     ['age', number],
-//   ]>],
-// ]>
+// M => ExactKeyMap<ReadonlyArray<
+//   | ['id', number]
+//   | [
+//       'profile',
+//       ExactKeyMap<ReadonlyArray<['name', string] | ['age', number]>>
+//     ]
+// >>
 
 type Entries = ExtractExactKeyMapGenerics<M>;
-// Entries => [
-//   ['id', number],
-//   ['profile', ExactKeyMap<[
-//     ['name', string],
-//     ['age', number],
-//   ]>],
-// ]
+// Entries => ReadonlyArray<
+//   | ['id', number]
+//   | [
+//       'profile',
+//       ExactKeyMap<ReadonlyArray<['name', string] | ['age', number]>>
+//     ]
+// >
 ```
 
 ### Utility Functions
 
-#### `isArrayOfTuples(value: unknown): value is Array<[PropertyKey, unknown]>`
+#### `isEntries(value: unknown): value is Es<Entry>`
 
 Checks if a value is an array of entry tuples.
 
 ```typescript
-isArrayOfTuples([
+isEntries([
   ['name', 'Alice'],
   [1, true],
 ]); // true
-isArrayOfTuples(['not-a-tuple']); // false
+isEntries(['not-a-tuple']); // false
 ```
 
-#### `isPlainObject<T = object>(input: unknown): input is T`
+#### `isEntry(value: unknown): value is Entry`
 
-Checks if a value is a plain object with type guard support.
-
-```typescript
-isPlainObject({ a: 1, b: 2 }); // true
-isPlainObject<{ a: number; b: number }>({ a: 1, b: 2 }); // true with type narrowing
-```
-
-#### `isTuple(value: unknown): value is [unknown, unknown]`
-
-Checks if a value is a tuple with exactly 2 elements.
+Checks if a value is a 2-length entry tuple.
 
 ```typescript
-isTuple([1, 2]); // true
-isTuple([1, 2, 3]); // false
-isTuple('string'); // false
+isEntry([1, 2]); // true
+isEntry(['a', 'b']); // true
+isEntry([1]); // false
+isEntry([1, 2, 3]); // false
+isEntry('string'); // false
 ```
 
 ## Comparison with Native Map

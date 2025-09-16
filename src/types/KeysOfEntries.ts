@@ -1,3 +1,6 @@
+import { Es } from './Es';
+import { Entry } from './Entry';
+
 /**
  * Extracts the union of key types from a readonly tuple/array of entry pairs.
  *
@@ -17,6 +20,5 @@
  *   const entries = Object.entries({ a: 1, b: 2 }) as const;
  *   type Keys = KeysOfEntries<typeof entries>; // "a" | "b"
  */
-export type KeysOfEntries<
-  Entries extends readonly (readonly [unknown, unknown])[],
-> = Entries[number] extends readonly [infer K, unknown] ? K : never;
+export type KeysOfEntries<Entries extends Es<Entry>> =
+  Entries[number] extends readonly [infer K, unknown] ? K : never;

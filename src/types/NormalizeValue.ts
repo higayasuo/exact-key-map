@@ -1,4 +1,6 @@
 import { ExactKeyMap } from '@/exact-key-map/ExactKeyMap';
+import { Es } from './Es';
+import { Entry } from './Entry';
 
 /**
  * Normalizes a value by converting nested entry arrays into `ExactKeyMap` instances.
@@ -34,13 +36,11 @@ import { ExactKeyMap } from '@/exact-key-map/ExactKeyMap';
  * // ExactKeyMap<[['profile', ExactKeyMap<[['id', 1]]>]]>
  * ```
  */
-export type NormalizeValue<V> = V extends readonly (readonly [
-  unknown,
-  unknown,
-])[]
-  ? ExactKeyMap<{
-      [I in keyof V]: V[I] extends readonly [infer Key, infer Val]
-        ? [Key, NormalizeValue<Val>]
-        : V[I];
-    }>
-  : V;
+export type NormalizeValue<V> =
+  V extends Es<Entry>
+    ? ExactKeyMap<{
+        [I in keyof V]: V[I] extends readonly [infer Key, infer Val]
+          ? [Key, NormalizeValue<Val>]
+          : V[I];
+      }>
+    : V;

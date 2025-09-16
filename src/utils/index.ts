@@ -1,3 +1,2 @@
-export * from './isArrayOfTuples';
-export * from './isPlainObject';
-export * from './isTuple';
+export * from './isEntities';
+export * from './isEntry';

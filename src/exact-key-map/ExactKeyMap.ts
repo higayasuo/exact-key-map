@@ -1,7 +1,9 @@
 import type { KeysOfEntries } from '@/types/KeysOfEntries';
 import type { ValueOfKey } from '@/types/ValueOfKey';
 import type { AllValues } from '@/types/AllValues';
-import { isArrayOfTuples } from '@/utils/isArrayOfTuples';
+import { isEntries } from '@/utils/isEntities';
+import { Es } from '@/types/Es';
+import { Entry } from '@/types/Entry';
 
 /**
  * A type-safe Map implementation that enforces exact key-value type relationships
@@ -12,19 +14,17 @@ import { isArrayOfTuples } from '@/utils/isArrayOfTuples';
  * - Ensuring values match the exact types associated with their keys
  * - Supporting nested structures by automatically converting nested entry arrays to `ExactKeyMap` instances
  *
- * Prefer using the constructor with union-of-tuples generics for most cases. Use
- * `fromEntries([... ] as const)` only when you specifically want to preserve
- * literal value types at construction time (note: preserved literals restrict
- * later `set` calls to those literals).
+ * Prefer using the constructor with union-of-tuples generics (via `Es`) for most cases.
+ * Using `as const` with the constructor preserves literal value types when desired
+ * (note: preserved literals restrict later `set` calls to those literals).
  *
  * @typeParam Entries - A readonly array of key-value entry pairs that defines the allowed structure
  *
  * @example
  * ```typescript
- * // Constructor (recommended): union-style generics
- * const map = new ExactKeyMap<[
- *   ['name', string] | ['age', number] | ['isActive', boolean]
- * ]>([
+ * // Constructor (recommended): union-style generics via Es alias
+ * type Entries = Es<['name', string] | ['age', number] | ['isActive', boolean]>;
+ * const map = new ExactKeyMap<Entries>([
  *   ['name', 'Alice'],
  *   ['age', 30],
  *   ['isActive', true],
@@ -40,44 +40,18 @@ import { isArrayOfTuples } from '@/utils/isArrayOfTuples';
  * @example
  * ```typescript
  * // Nested structures are automatically converted to ExactKeyMap instances
- * const nested = new ExactKeyMap<[
- *   [
- *     'user',
- *     [
- *       ['id', number] | ['name', string]
- *     ]
- *   ] | [
- *     'settings',
- *     [
- *       ['theme', string] | ['notifications', boolean]
- *     ]
- *   ]
- * ]>([
+ * type UserEs = Es<['id', number] | ['name', string]>;
+ * type SettingsEs = Es<['theme', string] | ['notifications', boolean]>;
+ * type Entries = Es<['user', UserEs] | ['settings', SettingsEs]>;
+ * const nested = new ExactKeyMap<Entries>([
  *   ['user', [['id', 1], ['name', 'Alice']]],
  *   ['settings', [['theme', 'dark'], ['notifications', true]]],
  * ]);
  * ```
  */
 export class ExactKeyMap<
-  Entries extends readonly (readonly [unknown, unknown])[],
+  Entries extends Es<readonly [unknown, unknown]>,
 > extends Map<KeysOfEntries<Entries>, AllValues<Entries>> {
-  /**
-   * Creates a new `ExactKeyMap` while preserving literal types from the provided entries.
-   *
-   * Prefer the constructor for most usage. This factory is useful when you want
-   * to preserve literal values at construction time without specifying generics.
-   * Note that preserving literals means subsequent `set` calls for those keys
-   * must use the same literal types. For mutable values, use the constructor
-   * with union-of-tuples generics instead.
-   */
-  static fromEntries = <
-    const E extends readonly (readonly [unknown, unknown])[],
-  >(
-    entries: E,
-  ): ExactKeyMap<E> => {
-    return new ExactKeyMap<E>(entries);
-  };
-
   /**
    * Creates a new ExactKeyMap instance from the provided entries.
    *
@@ -90,28 +64,20 @@ export class ExactKeyMap<
    *
    * @example
    * ```typescript
-   * const map = new ExactKeyMap<[
-   *   ['id', number] | ['profile', [
-   *     ['name', string] | ['email', string]
-   *   ]]
-   * ]>([
+   * type ProfileEs = Es<['name', string] | ['email', string]>;
+   * type ExampleEntries = Es<['id', number] | ['profile', ProfileEs]>;
+   * const map = new ExactKeyMap<ExampleEntries>([
    *   ['id', 1],
    *   ['profile', [['name', 'Alice'], ['email', 'alice@example.com']]],
    * ]);
    * ```
    */
-  constructor(entries?: ReadonlyArray<Entries[number]>);
-  constructor(entries?: Entries);
-  constructor(entries?: ReadonlyArray<Entries[number]> | Entries) {
-    const normalized = (entries ?? []) as ReadonlyArray<Entries[number]>;
-    const processed = normalized.map(
-      ([key, value]: readonly [unknown, unknown]) => [
-        key,
-        isArrayOfTuples(value)
-          ? new ExactKeyMap(value as readonly (readonly [unknown, unknown])[])
-          : value,
-      ],
-    );
+  constructor(entries?: Entries) {
+    const normalized = entries ?? [];
+    const processed = normalized.map(([key, value]) => [
+      key,
+      isEntries(value) ? new ExactKeyMap(value as Es<Entry>) : value,
+    ]);
 
     super(processed as Iterable<[KeysOfEntries<Entries>, AllValues<Entries>]>);
   }
@@ -146,7 +112,7 @@ export class ExactKeyMap<
    * // map.set('name', 123);    // ❌ TypeScript error
    * // map.set('invalid', 'x'); // ❌ TypeScript error
    *
-   * // Note: fromEntries([... ] as const) preserves literal values and will
+   * // Note: constructing with `as const` preserves literal values and will
    * // restrict subsequent set calls to those literals. Use constructor for set examples.
    * ```
    */

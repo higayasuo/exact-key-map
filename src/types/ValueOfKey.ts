@@ -1,5 +1,7 @@
 import { ExtractExactEntry } from './ExtractExactEntity';
 import { NormalizeValue } from './NormalizeValue';
+import { Es } from './Es';
+import { Entry } from './Entry';
 
 /**
  * Resolve the value type associated with a given key `K` from an `Entries`
@@ -22,10 +24,7 @@ import { NormalizeValue } from './NormalizeValue';
  *   // For nested entries, the value becomes an ExactKeyMap with literal values
  *   type V3 = ValueOfKey<Nested, "child">; // ExactKeyMap<readonly [["x", 1]]>
  */
-export type ValueOfKey<
-  Entries extends readonly (readonly [unknown, unknown])[],
-  K,
-> = // Try to find exact match entries first
+export type ValueOfKey<Entries extends Es<Entry>, K> = // Try to find exact match entries first
   ExtractExactEntry<Entries, K> extends infer Exact
     ? [Exact] extends [never]
       ? // No exact matches: allow catch-all entries where K is a subtype of the entry key

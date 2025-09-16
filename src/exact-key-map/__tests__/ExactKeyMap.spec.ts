@@ -1,5 +1,6 @@
 import { describe, it, expect, expectTypeOf } from 'vitest';
 import { ExactKeyMap } from '../ExactKeyMap';
+import { Es } from '@/types/Es';
 
 enum Headers {
   Algorithm = 1,
@@ -18,7 +19,7 @@ enum Headers {
   X5U = 35,
 }
 
-type ProtectedHeadersEntries = (
+type ProtectedHeadersEntries = Es<
   | [Headers.Algorithm, number]
   | [Headers.Critical, Headers[]]
   | [Headers.ContentType, number | Uint8Array]
@@ -33,7 +34,7 @@ type ProtectedHeadersEntries = (
       >,
       Uint8Array | Uint8Array[] | number | number[],
     ]
-)[];
+>;
 
 class ProtectedHeaders extends ExactKeyMap<ProtectedHeadersEntries> {
   constructor(entries?: ProtectedHeadersEntries) {
@@ -47,12 +48,12 @@ describe('ExactKeyMap', () => {
       it('valid: constructs from entries and supports updates', () => {
         const date = new Date();
         const date2 = new Date(2);
-        type Entries = [['name', string] | [1, boolean] | ['ccc', Date]];
-        const initialEntries = [
+        type Entries = Es<['name', string] | [1, boolean] | ['ccc', Date]>;
+        const initialEntries: Entries = [
           ['name', 'Alice'],
           [1, true],
           ['ccc', date],
-        ] as ReadonlyArray<Entries[number]>;
+        ];
         const m = new ExactKeyMap<Entries>(initialEntries);
 
         expect(m).toBeInstanceOf(ExactKeyMap);
@@ -81,7 +82,7 @@ describe('ExactKeyMap', () => {
         const date = new Date();
         const date2 = new Date(2);
         const m = new ExactKeyMap<
-          [['name', string] | [1, boolean] | ['ccc', Date]]
+          Es<['name', string] | [1, boolean] | ['ccc', Date]>
         >([
           ['name', 'Alice'],
           ['ccc', date],
@@ -110,8 +111,8 @@ describe('ExactKeyMap', () => {
     });
 
     describe('constructor without generics', () => {
-      it('valid: infers types from entries without generics', () => {
-        const m = ExactKeyMap.fromEntries([
+      it('valid: infers types from constructor without generics', () => {
+        const m = new ExactKeyMap([
           ['name', 'Alice'],
           [1, true],
         ] as const);
@@ -138,7 +139,7 @@ describe('ExactKeyMap', () => {
       it('valid: supports Uint8Array values without misclassification', () => {
         const buf1 = new Uint8Array([1, 2, 3]);
         const buf2 = new Uint8Array([4, 5]);
-        const m = new ExactKeyMap<[['ccc', Uint8Array]]>([['ccc', buf1]]);
+        const m = new ExactKeyMap<Es<['ccc', Uint8Array]>>([['ccc', buf1]]);
 
         expect(m).toBeInstanceOf(ExactKeyMap);
         expect(m.size).toBe(1);
@@ -154,9 +155,10 @@ describe('ExactKeyMap', () => {
 
     describe('nested entries', () => {
       it('valid: nested entries are converted to ExactKeyMap', () => {
-        const m = new ExactKeyMap<
-          [['a', number] | ['b', number] | ['c', [['d', [['e', number]]]]]]
-        >([
+        type EEs = Es<['e', number]>;
+        type DEs = Es<['d', EEs]>;
+        type Entries = Es<['a', number] | ['b', number] | ['c', DEs]>;
+        const m = new ExactKeyMap<Entries>([
           ['a', 1],
           ['b', 2],
           ['c', [['d', [['e', 3]]]]],
@@ -167,12 +169,12 @@ describe('ExactKeyMap', () => {
         const c = m.get('c');
         expect(c).toBeInstanceOf(ExactKeyMap);
         expectTypeOf(c).toEqualTypeOf<
-          ExactKeyMap<[['d', ExactKeyMap<[['e', number]]>]]> | undefined
+          ExactKeyMap<Es<['d', ExactKeyMap<Es<['e', number]>>]>> | undefined
         >();
         const d = c?.get('d');
         expect(d).toBeInstanceOf(ExactKeyMap);
         expectTypeOf(d).toEqualTypeOf<
-          ExactKeyMap<[['e', number]]> | undefined
+          ExactKeyMap<Es<['e', number]>> | undefined
         >();
         const e = d?.get('e');
         expect(e).toBe(3);
@@ -180,11 +182,9 @@ describe('ExactKeyMap', () => {
       });
 
       it('valid: constructs from nested entries variable (non-inline)', () => {
-        type Entries = (
-          | ['a', number]
-          | ['b', number]
-          | ['c', [['d', [['e', number]]]]]
-        )[];
+        type EEs = Es<['e', number]>;
+        type DEs = Es<['d', EEs]>;
+        type Entries = Es<['a', number] | ['b', number] | ['c', DEs]>;
 
         const entries: Entries = [
           ['a', 1],
@@ -199,12 +199,12 @@ describe('ExactKeyMap', () => {
         const c = m.get('c');
         expect(c).toBeInstanceOf(ExactKeyMap);
         expectTypeOf(c).toEqualTypeOf<
-          ExactKeyMap<[['d', ExactKeyMap<[['e', number]]>]]> | undefined
+          ExactKeyMap<Es<['d', ExactKeyMap<Es<['e', number]>>]>> | undefined
         >();
         const d = c?.get('d');
         expect(d).toBeInstanceOf(ExactKeyMap);
         expectTypeOf(d).toEqualTypeOf<
-          ExactKeyMap<[['e', number]]> | undefined
+          ExactKeyMap<Es<['e', number]>> | undefined
         >();
         const e = d?.get('e');
         expect(e).toBe(3);
@@ -215,7 +215,7 @@ describe('ExactKeyMap', () => {
     describe('delete behavior', () => {
       it("valid: delete('name') returns true and removes the entry; second delete returns false", () => {
         const m = new ExactKeyMap<
-          [['name', string] | [1, boolean] | ['ccc', number]]
+          Es<['name', string] | [1, boolean] | ['ccc', number]>
         >([
           ['name', 'Alice'],
           [1, true],
@@ -234,9 +234,9 @@ describe('ExactKeyMap', () => {
       });
 
       it('valid: delete on nested map removes nested key', () => {
-        const m = new ExactKeyMap<
-          [['a', number] | ['b', number] | ['c', [['d', number]]]]
-        >([
+        type DEs = Es<['d', number]>;
+        type Entries = Es<['a', number] | ['b', number] | ['c', DEs]>;
+        const m = new ExactKeyMap<Entries>([
           ['a', 1],
           ['b', 2],
           ['c', [['d', 3]]],
@@ -261,9 +261,9 @@ describe('ExactKeyMap', () => {
       });
 
       it('valid: constructs an empty ExactKeyMap from generics only', () => {
-        const m = new ExactKeyMap<
-          [['name', string] | [1, boolean] | ['nested', [['x', number]]]]
-        >([]);
+        type XEs = Es<['x', number]>;
+        type Entries = Es<['name', string] | [1, boolean] | ['nested', XEs]>;
+        const m = new ExactKeyMap<Entries>([]);
 
         expect(m).toBeInstanceOf(ExactKeyMap);
         expect(m.size).toBe(0);
@@ -271,16 +271,14 @@ describe('ExactKeyMap', () => {
         expectTypeOf(m.get('name')).toEqualTypeOf<string | undefined>();
         expectTypeOf(m.get(1)).toEqualTypeOf<boolean | undefined>();
         const nested = m.get('nested');
-        expectTypeOf(nested).toEqualTypeOf<
-          ExactKeyMap<[['x', number]]> | undefined
-        >();
+        expectTypeOf(nested).toEqualTypeOf<ExactKeyMap<XEs> | undefined>();
 
         m.set('name', 'Alice');
         m.set(1, true);
         expect(m.get('name')).toBe('Alice');
         expect(m.get(1)).toBe(true);
 
-        const n = new ExactKeyMap<[['x', number]]>([['x', 1]]);
+        const n = new ExactKeyMap<XEs>([['x', 1]]);
         m.set('nested', n);
         expect(m.get('nested')).toBeInstanceOf(ExactKeyMap);
       });

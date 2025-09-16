@@ -1,22 +1,24 @@
-import { describe, it, expect } from 'vitest';
-import { isArrayOfTuples } from '../isArrayOfTuples';
+import { describe, it, expect, expectTypeOf } from 'vitest';
+import { isEntries } from '../isEntities';
+import type { Es } from '@/types/Es';
+import type { Entry } from '@/types/Entry';
 
-describe('isArrayOfTuples', () => {
+describe('isEntries', () => {
   it('returns true for arrays of valid entry tuples', () => {
     expect(
-      isArrayOfTuples([
+      isEntries([
         ['name', 'Alice'],
         [1, true],
       ]),
     ).toBe(true);
     expect(
-      isArrayOfTuples([
+      isEntries([
         ['key', 'value'],
         ['anotherKey', 42],
       ]),
     ).toBe(true);
     expect(
-      isArrayOfTuples([
+      isEntries([
         ['string', 'value'],
         [123, 'number'],
         [Symbol('sym'), {}],
@@ -25,29 +27,29 @@ describe('isArrayOfTuples', () => {
   });
 
   it('returns true for empty arrays', () => {
-    expect(isArrayOfTuples([])).toBe(true);
+    expect(isEntries([])).toBe(true);
   });
 
   it('returns false for arrays with non-tuple elements', () => {
-    expect(isArrayOfTuples(['not-a-tuple'])).toBe(false);
-    expect(isArrayOfTuples([{ key: 'value' }])).toBe(false);
-    expect(isArrayOfTuples([null, undefined])).toBe(false);
-    expect(isArrayOfTuples([1, 2, 3])).toBe(false);
+    expect(isEntries(['not-a-tuple'])).toBe(false);
+    expect(isEntries([{ key: 'value' }])).toBe(false);
+    expect(isEntries([null, undefined])).toBe(false);
+    expect(isEntries([1, 2, 3])).toBe(false);
   });
 
   it('returns false for mixed arrays with some non-tuples', () => {
-    expect(isArrayOfTuples([['key', 'value'], 'not-a-tuple'])).toBe(false);
-    expect(isArrayOfTuples([['key', 'value'], { key: 'value' }])).toBe(false);
+    expect(isEntries([['key', 'value'], 'not-a-tuple'])).toBe(false);
+    expect(isEntries([['key', 'value'], { key: 'value' }])).toBe(false);
   });
 
   it('returns false for non-array values', () => {
-    expect(isArrayOfTuples('string')).toBe(false);
-    expect(isArrayOfTuples(123)).toBe(false);
-    expect(isArrayOfTuples(true)).toBe(false);
-    expect(isArrayOfTuples(null)).toBe(false);
-    expect(isArrayOfTuples(undefined)).toBe(false);
-    expect(isArrayOfTuples({})).toBe(false);
-    expect(isArrayOfTuples(() => {})).toBe(false);
+    expect(isEntries('string')).toBe(false);
+    expect(isEntries(123)).toBe(false);
+    expect(isEntries(true)).toBe(false);
+    expect(isEntries(null)).toBe(false);
+    expect(isEntries(undefined)).toBe(false);
+    expect(isEntries({})).toBe(false);
+    expect(isEntries(() => {})).toBe(false);
   });
 
   it('works as a type guard', () => {
@@ -56,8 +58,8 @@ describe('isArrayOfTuples', () => {
       [1, true],
     ];
 
-    if (isArrayOfTuples(value)) {
-      // TypeScript should narrow element to tuple-like [PropertyKey, unknown]
+    if (isEntries(value)) {
+      expectTypeOf(value).toEqualTypeOf<Es<Entry>>();
       const first = value[0];
       expect(
         typeof first[0] === 'string' ||
@@ -70,14 +72,14 @@ describe('isArrayOfTuples', () => {
       expect(value[1][0]).toBe(1);
       expect(value[1][1]).toBe(true);
     } else {
-      expect.fail('isArrayOfTuples should return true for valid entry tuples');
+      expect.fail('isEntries should return true for valid entry tuples');
     }
   });
 
-  it('handles nested tuples correctly', () => {
-    expect(isArrayOfTuples([['config', [['debug', true]]]])).toBe(true);
+  it('handles nested entries correctly', () => {
+    expect(isEntries([['config', [['debug', true]]]])).toBe(true);
     expect(
-      isArrayOfTuples([
+      isEntries([
         [
           'nested',
           [
