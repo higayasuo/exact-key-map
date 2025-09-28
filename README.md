@@ -9,6 +9,7 @@ A strongly-typed `Map` extension for TypeScript that enforces exact key/value re
 - 🔤 **Literal-Friendly**: Use `new ExactKeyMap([... ] as const)` to preserve literal value types when desired
 - 📦 **Zero Dependencies**: No external dependencies - lightweight and fast
 - 🎯 **TypeScript First**: Built with TypeScript and provides excellent type inference
+- 🔁 **Native Map Export**: Convert to a plain `Map` with `asMap()`
 - 🧪 **Fully Tested**: Comprehensive test suite with 82 tests
 
 ## Installation
@@ -108,6 +109,18 @@ const credentials = db?.get('credentials');
 
 const username = credentials?.get('username');
 // Type: string | undefined
+```
+
+You can also convert any `ExactKeyMap` (including nested structures) into native `Map` instances using `asMap()`:
+
+```typescript
+const plain = config.asMap();
+const dbMap = plain.get('database'); // native Map
+const credMap = (dbMap as Map<string, unknown>).get('credentials') as Map<
+  string,
+  unknown
+>;
+console.log(credMap.get('username')); // 'admin'
 ```
 
 ## Extending ExactKeyMap
@@ -261,6 +274,54 @@ map.delete('name'); // ✅ Valid, returns true
 map.delete(1); // ✅ Valid, returns true
 map.delete('name'); // ✅ Valid, returns false (already deleted)
 // map.delete('invalid'); // ❌ TypeScript error
+```
+
+##### `asMap(): Map<KeysOfEntries<Entries>, AllValues<Entries>>`
+
+Converts the `ExactKeyMap` to a plain JavaScript `Map`. If any values are nested `ExactKeyMap` instances, they are recursively converted to plain `Map`s as well.
+
+```typescript
+type Entries = Es<['name', string] | ['age', number]>;
+const exact = new ExactKeyMap<Entries>([
+  ['name', 'Alice'],
+  ['age', 30],
+]);
+
+const plain = exact.asMap();
+plain.get('name'); // 'Alice'
+plain.get('age'); // 30
+```
+
+Nested structures are also converted all the way down:
+
+```typescript
+type Level3Es = Es<['value', string]>;
+type Level2Es = Es<['level3', Level3Es] | ['count', number]>;
+type Level1Es = Es<['level2', Level2Es] | ['title', string]>;
+type NestedEntries = Es<['level1', Level1Es] | ['root', boolean]>;
+
+const nested = new ExactKeyMap<NestedEntries>([
+  [
+    'level1',
+    [
+      [
+        'level2',
+        [
+          ['level3', [['value', 'deep']]],
+          ['count', 42],
+        ],
+      ],
+      ['title', 'Nested'],
+    ],
+  ],
+  ['root', true],
+]);
+
+const rootMap = nested.asMap(); // native Map
+const level1 = rootMap.get('level1') as Map<string, unknown>;
+const level2 = level1.get('level2') as Map<string, unknown>;
+const level3 = level2.get('level3') as Map<string, unknown>;
+level3.get('value'); // 'deep'
 ```
 
 ### Type Utilities

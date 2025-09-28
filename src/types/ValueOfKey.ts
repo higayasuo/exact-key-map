@@ -1,4 +1,4 @@
-import { ExtractExactEntry } from './ExtractExactEntity';
+import { ExtractExactEntry } from './ExtractExactEntry';
 import { NormalizeValue } from './NormalizeValue';
 import { Es } from './Es';
 import { Entry } from './Entry';

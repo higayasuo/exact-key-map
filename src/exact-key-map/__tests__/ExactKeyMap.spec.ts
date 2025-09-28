@@ -353,4 +353,71 @@ describe('ExactKeyMap', () => {
       });
     });
   });
+
+  describe('asMap', () => {
+    // Reduced to essential tests only
+    it('valid: asMap returns a new Map instance (not the same reference)', () => {
+      type Entries = Es<['name', string]>;
+      const exactMap = new ExactKeyMap<Entries>([['name', 'Alice']]);
+      const regularMap1 = exactMap.asMap();
+      const regularMap2 = exactMap.asMap();
+      expect(regularMap1).not.toBe(regularMap2);
+      expect(regularMap1).not.toBe(exactMap);
+    });
+    it('valid: asMap returns a native Map (exact Map type)', () => {
+      type Entries = Es<['name', string] | ['age', number]>;
+      const exactMap = new ExactKeyMap<Entries>([
+        ['name', 'Alice'],
+        ['age', 30],
+      ]);
+      const regularMap = exactMap.asMap();
+      expect(Object.getPrototypeOf(regularMap)).toBe(Map.prototype);
+      expect(regularMap.constructor).toBe(Map);
+      expect(Object.prototype.toString.call(regularMap)).toBe('[object Map]');
+      expect(regularMap).not.toBeInstanceOf(ExactKeyMap);
+    });
+
+    it('valid: nested asMap returns exact native Map at every level', () => {
+      type Level3Es = Es<['value', string]>;
+      type Level2Es = Es<['level3', Level3Es] | ['count', number]>;
+      type Level1Es = Es<['level2', Level2Es] | ['title', string]>;
+      type Entries = Es<['level1', Level1Es] | ['root', boolean]>;
+      const exactMap = new ExactKeyMap<Entries>([
+        [
+          'level1',
+          [
+            [
+              'level2',
+              [
+                ['level3', [['value', 'deep']]],
+                ['count', 42],
+              ],
+            ],
+            ['title', 'Nested'],
+          ],
+        ],
+        ['root', true],
+      ]);
+      const rootMap = exactMap.asMap();
+      expect(Object.getPrototypeOf(rootMap)).toBe(Map.prototype);
+      expect(rootMap.constructor).toBe(Map);
+      expect(Object.prototype.toString.call(rootMap)).toBe('[object Map]');
+      const level1Map = rootMap.get('level1') as Map<string, unknown>;
+      expect(Object.getPrototypeOf(level1Map)).toBe(Map.prototype);
+      expect(level1Map.constructor).toBe(Map);
+      expect(Object.prototype.toString.call(level1Map)).toBe('[object Map]');
+      const level2Map = level1Map.get('level2') as Map<string, unknown>;
+      expect(Object.getPrototypeOf(level2Map)).toBe(Map.prototype);
+      expect(level2Map.constructor).toBe(Map);
+      expect(Object.prototype.toString.call(level2Map)).toBe('[object Map]');
+      const level3Map = level2Map.get('level3') as Map<string, unknown>;
+      expect(Object.getPrototypeOf(level3Map)).toBe(Map.prototype);
+      expect(level3Map.constructor).toBe(Map);
+      expect(Object.prototype.toString.call(level3Map)).toBe('[object Map]');
+      expect(rootMap.get('root')).toBe(true);
+      expect(level1Map.get('title')).toBe('Nested');
+      expect(level2Map.get('count')).toBe(42);
+      expect(level3Map.get('value')).toBe('deep');
+    });
+  });
 });

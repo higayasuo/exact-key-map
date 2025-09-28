@@ -1,5 +1,5 @@
 import { describe, it, expectTypeOf } from 'vitest';
-import type { ExtractExactEntry } from '../ExtractExactEntity';
+import type { ExtractExactEntry } from '../ExtractExactEntry';
 
 describe('ExtractExactEntry', () => {
   it('extracts the exact entry for a present string key', () => {

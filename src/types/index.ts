@@ -1,6 +1,6 @@
 export * from './AllValues';
 export * from './Es';
-export * from './ExtractExactEntity';
+export * from './ExtractExactEntry';
 export * from './ExtractExactKeyMapGenerics';
 export * from './KeysOfEntries';
 export * from './NormalizeValue';

@@ -186,4 +186,59 @@ export class ExactKeyMap<
   delete<K extends KeysOfEntries<Entries>>(key: K): boolean {
     return super.delete(key);
   }
+
+  /**
+   * Converts the ExactKeyMap to a plain JavaScript Map.
+   *
+   * This method creates a new Map instance with the same key-value pairs as the
+   * ExactKeyMap. If any values are nested ExactKeyMaps (objects with an `asMap` method),
+   * they are recursively converted to plain Maps as well.
+   *
+   * @returns A new Map containing all key-value pairs from this ExactKeyMap
+   *
+   * @example
+   * ```typescript
+   * const exactMap = new ExactKeyMap<[
+   *   ['name', string] | ['age', number]
+   * ]>([
+   *   ['name', 'Alice'],
+   *   ['age', 30],
+   * ]);
+   *
+   * const plainMap = exactMap.asMap();
+   * console.log(plainMap.get('name')); // 'Alice'
+   * console.log(plainMap.get('age'));  // 30
+   * ```
+   *
+   * @example
+   * ```typescript
+   * // With nested ExactKeyMaps
+   * const nested = new ExactKeyMap<[
+   *   ['user', ExactKeyMap<[['id', number] | ['name', string]]>]
+   * ]>([
+   *   ['user', new ExactKeyMap([['id', 1], ['name', 'Bob']])],
+   * ]);
+   *
+   * const plainMap = nested.asMap();
+   * const userMap = plainMap.get('user'); // Plain Map, not ExactKeyMap
+   * ```
+   */
+  asMap(): Map<KeysOfEntries<Entries>, AllValues<Entries>> {
+    const map = new Map<KeysOfEntries<Entries>, AllValues<Entries>>();
+
+    this.forEach((value, key) => {
+      if (
+        value &&
+        typeof value === 'object' &&
+        'asMap' in value &&
+        typeof (value as { asMap: () => unknown }).asMap === 'function'
+      ) {
+        map.set(key, (value as { asMap: () => AllValues<Entries> }).asMap());
+      } else {
+        map.set(key, value);
+      }
+    });
+
+    return map;
+  }
 }
